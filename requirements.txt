@@ -1,0 +1,34 @@
+# Core NLP
+transformers
+datasets
+evaluate
+accelerate
+peft
+trl
+sentence-transformers
+
+# ML / Data
+torch
+scikit-learn
+pandas
+numpy
+
+# Topic Modelling
+bertopic
+gensim
+pyLDAvis
+umap-learn
+hdbscan
+
+# Visualization
+matplotlib
+seaborn
+plotly
+
+# Utilities / Configuration / Notebooks
+tqdm
+pyyaml
+hydra-core
+jupyter
+wandb
+tensorboard

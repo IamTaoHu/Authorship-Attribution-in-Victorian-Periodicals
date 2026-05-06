@@ -1,0 +1,36 @@
+project_name: authorship-attribution-victorian-periodicals
+
+experiment:
+  name: null
+  seed: 42
+  output_dir: outputs
+
+model:
+  model_name: microsoft/deberta-v3-base
+  model_short_name: deberta
+  max_length: 512
+
+training:
+  batch_size: 16
+  learning_rate: 2e-5
+  epochs: 5
+  weight_decay: 0.01
+  warmup_ratio: 0.1
+  gradient_accumulation_steps: 1
+  fp16: true
+
+data:
+  dataset_name: null
+  train_split: train
+  validation_split: validation
+  test_split: test
+
+logging:
+  backend: wandb
+  log_dir: outputs/logs
+  log_every_n_steps: 50
+
+evaluation:
+  metrics:
+    - accuracy
+    - macro_f1

@@ -1,0 +1,71 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+build/
+dist/
+*.egg-info/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Environment and local configuration
+.env
+.env.*
+!.env.example
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Dataset and model caches
+.cache/
+data/cache/*
+!data/cache/.gitkeep
+
+# Large data files
+data/raw/*
+!data/raw/.gitkeep
+data/processed/*
+!data/processed/.gitkeep
+docs/
+
+# Experiment outputs
+outputs/*/
+!outputs/checkpoints/
+!outputs/logs/
+!outputs/metrics/
+!outputs/plots/
+!outputs/predictions/
+outputs/checkpoints/*
+!outputs/checkpoints/.gitkeep
+outputs/logs/*
+!outputs/logs/.gitkeep
+outputs/metrics/*
+!outputs/metrics/.gitkeep
+outputs/plots/*
+!outputs/plots/.gitkeep
+outputs/predictions/*
+!outputs/predictions/.gitkeep
+
+# Common ML artifacts
+*.ckpt
+*.pt
+*.pth
+*.bin
+*.safetensors
+*.joblib
+*.pkl
+wandb/
+mlruns/
+
+# OS files
+.DS_Store
+Thumbs.db
