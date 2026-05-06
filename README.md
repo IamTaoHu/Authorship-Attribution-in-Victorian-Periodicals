@@ -109,3 +109,34 @@ Future experiment runs should log:
 - macro F1
 - runtime
 - GPU memory
+
+## Phase 1 Dataset Pipeline
+
+Phase 1 prepares paragraph-level authorship datasets for later experiments. It loads Hugging Face datasets, inspects schemas and class distributions, checks PERIAD split sizes, analyzes OCR/text-quality issues, cleans PERIAD text, and optionally runs tokenizer length analysis. It does not train models.
+
+Run a quick inspection and cleaning pass from the project root:
+
+```bash
+python scripts/phase1_dataset_pipeline.py --output_dir outputs/phase1 --max_samples_for_token_analysis 50 --skip_tokenization
+```
+
+Run the full Phase 1 pipeline after confirming the PERIAD Hugging Face dataset name:
+
+```bash
+python scripts/phase1_dataset_pipeline.py --periad_dataset_name YOUR_PERIAD_HF_NAME --output_dir outputs/phase1 --max_samples_for_token_analysis 2000
+```
+
+Expected outputs include:
+
+- `outputs/phase1/dataset_report.json`
+- `outputs/phase1/class_distribution.csv`
+- `outputs/phase1/periad_class_distribution.csv`
+- `outputs/phase1/label_mapping.json`
+- `outputs/phase1/text_quality_report.json`
+- `outputs/phase1/suspicious_examples.csv`
+- `outputs/phase1/warnings.txt`
+- `outputs/phase1/periad_cleaned/`
+- `outputs/phase1/tokenized/` when tokenization is not skipped
+- paragraph length, class distribution, and token length plots
+
+Known TODO: confirm the exact PERIAD Hugging Face dataset name and pass it with `--periad_dataset_name`.
