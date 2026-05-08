@@ -82,19 +82,21 @@ def process_periad_dataset(
     """Run PERIAD-specific Phase 1 processing and save outputs."""
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
+    plots_dir = output_path / "plots"
+    plots_dir.mkdir(parents=True, exist_ok=True)
 
     label_report = label_mapping_report(dataset, label_column)
     save_json(label_report, output_path / "label_mapping.json")
 
     class_distribution = make_periad_class_distribution(dataset, label_column)
     class_distribution.to_csv(output_path / "periad_class_distribution.csv", index=False)
-    plot_class_distribution(class_distribution, output_path / "periad_samples_per_author.png")
+    plot_class_distribution(class_distribution, plots_dir / "periad_samples_per_author.png")
 
     quality_report, suspicious_examples = analyze_text_quality(dataset, text_column, output_path)
     save_json(quality_report, output_path / "text_quality_report.json")
     suspicious_examples.to_csv(output_path / "suspicious_examples.csv", index=False)
 
-    plot_length_distributions(dataset, text_column, output_path)
+    plot_length_distributions(dataset, text_column, plots_dir)
 
     cleaned_dataset = clean_dataset(dataset, text_column)
     cleaned_dataset.save_to_disk(str(output_path / "periad_cleaned"))
@@ -179,8 +181,8 @@ def plot_class_distribution(distribution: pd.DataFrame, output_path: str | Path)
     plt.close()
 
 
-def plot_length_distributions(dataset: DatasetDict, text_column: str, output_dir: str | Path) -> None:
-    """Plot paragraph character and word length distributions."""
+def plot_length_distributions(dataset: DatasetDict, text_column: str, plots_dir: str | Path) -> None:
+    """Plot paragraph character and word length distributions into the plots directory."""
     texts: list[str] = []
     for split_dataset in dataset.values():
         if text_column not in split_dataset.column_names:
@@ -189,8 +191,10 @@ def plot_length_distributions(dataset: DatasetDict, text_column: str, output_dir
 
     char_lengths = [len(text) for text in texts]
     word_lengths = [len(text.split()) for text in texts]
-    _plot_histogram(char_lengths, Path(output_dir) / "paragraph_char_lengths.png", "Paragraph Character Lengths", "Characters")
-    _plot_histogram(word_lengths, Path(output_dir) / "paragraph_word_lengths.png", "Paragraph Word Lengths", "Words")
+    plots_path = Path(plots_dir)
+    plots_path.mkdir(parents=True, exist_ok=True)
+    _plot_histogram(char_lengths, plots_path / "paragraph_char_lengths.png", "Paragraph Character Lengths", "Characters")
+    _plot_histogram(word_lengths, plots_path / "paragraph_word_lengths.png", "Paragraph Word Lengths", "Words")
 
 
 def inspect_and_save_dataset(

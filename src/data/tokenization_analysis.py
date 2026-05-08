@@ -33,14 +33,16 @@ def load_tokenizer_with_fallbacks(
 ) -> tuple[Optional[PreTrainedTokenizerBase], Optional[str]]:
     """Load the first available tokenizer from a list of fallback names."""
     for tokenizer_name in tokenizer_names:
-        try:
-            tokenizer = AutoTokenizer.from_pretrained(tokenizer_name, use_fast=True)
-            if tokenizer.pad_token is None and tokenizer.eos_token is not None:
-                tokenizer.pad_token = tokenizer.eos_token
-            return tokenizer, tokenizer_name
-        except Exception as exc:  # noqa: BLE001 - tokenizer loading can fail for many HF/network reasons.
-            if warn:
-                warn(f"Tokenizer load failed for {tokenizer_name}: {exc}")
+        for use_fast in (True, False):
+            try:
+                tokenizer = AutoTokenizer.from_pretrained(tokenizer_name, use_fast=use_fast)
+                if tokenizer.pad_token is None and tokenizer.eos_token is not None:
+                    tokenizer.pad_token = tokenizer.eos_token
+                return tokenizer, tokenizer_name
+            except Exception as exc:  # noqa: BLE001
+                if warn:
+                    mode = "fast" if use_fast else "slow"
+                    warn(f"Tokenizer load failed for {tokenizer_name} ({mode}): {exc}")
     return None, None
 
 
@@ -118,6 +120,8 @@ def run_tokenization_analysis(
     """Run token length analysis for configured tokenizers and save reports/plots."""
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
+    plots_dir = output_path / "plots"
+    plots_dir.mkdir(parents=True, exist_ok=True)
     tokenized_dir = output_path / "tokenized"
     tokenized_dir.mkdir(parents=True, exist_ok=True)
 
@@ -135,7 +139,7 @@ def run_tokenization_analysis(
         rows.append(summarize_token_lengths(tokenizer_label, loaded_name, lengths))
         plot_token_length_histogram(
             lengths,
-            output_path / f"token_length_histogram_{safe_name}.png",
+            plots_dir / f"token_length_histogram_{safe_name}.png",
             title=f"Token Lengths: {tokenizer_label}",
         )
 

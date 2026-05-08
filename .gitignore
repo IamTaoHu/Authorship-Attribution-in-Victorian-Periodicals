@@ -24,9 +24,21 @@ ENV/
 
 # Jupyter
 .ipynb_checkpoints/
+*.nbconvert.ipynb
+
+# Notebook/runtime outputs
+# Keep notebooks themselves reviewable, but ignore generated export artifacts.
+notebooks/**/outputs/
+notebooks/**/.ipynb_checkpoints/
 
 # Dataset and model caches
 .cache/
+cache/
+.hf_cache/
+.huggingface/
+huggingface/
+transformers_cache/
+hf_cache/
 data/cache/*
 !data/cache/.gitkeep
 
@@ -35,6 +47,18 @@ data/raw/*
 !data/raw/.gitkeep
 data/processed/*
 !data/processed/.gitkeep
+*.arrow
+*.parquet
+*.feather
+*.h5
+*.hdf5
+*.sqlite
+*.db
+
+# Local wheel/download artifacts
+# Dependency wheels should be installed from package indexes or documented externally.
+wheels/
+*.whl
 
 # Experiment outputs
 outputs/*/
@@ -53,6 +77,11 @@ outputs/plots/*
 !outputs/plots/.gitkeep
 outputs/predictions/*
 !outputs/predictions/.gitkeep
+AGENTS.md
+CURRENT_STATE.md
+PROJECT_MAP.md
+PROJECT_MAP.md
+TASK_BOARD.md
 
 # Common ML artifacts
 *.ckpt
@@ -60,10 +89,34 @@ outputs/predictions/*
 *.pth
 *.bin
 *.safetensors
+*.onnx
+*.tflite
+*.pb
 *.joblib
 *.pkl
+*.pickle
+checkpoint/
+checkpoints/
+checkpoint-*/
+**/checkpoint/
+**/checkpoints/
+**/checkpoint-*/
+trainer_state.json
+optimizer.pt
+scheduler.pt
+rng_state.pth
+training_args.bin
+model.safetensors
+pytorch_model.bin
+adapter_model.safetensors
+adapter_model.bin
+
+# Experiment tracking
 wandb/
 mlruns/
+runs/
+lightning_logs/
+tensorboard/
 
 # OS files
 .DS_Store

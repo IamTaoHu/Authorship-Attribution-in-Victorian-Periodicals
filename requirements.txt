@@ -6,9 +6,13 @@ accelerate
 peft
 trl
 sentence-transformers
+transformers[sentencepiece]
 
 # ML / Data
 torch
+tiktoken
+sentencepiece
+protobuf
 scikit-learn
 pandas
 numpy
