@@ -28,6 +28,7 @@ hdbscan
 matplotlib
 seaborn
 plotly
+tabulate
 
 # Utilities / Configuration / Notebooks
 tqdm

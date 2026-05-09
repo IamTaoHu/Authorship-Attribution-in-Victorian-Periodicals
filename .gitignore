@@ -59,7 +59,7 @@ data/processed/*
 # Dependency wheels should be installed from package indexes or documented externally.
 wheels/
 *.whl
-docs/*
+docs/
 
 # Experiment outputs
 outputs/*/

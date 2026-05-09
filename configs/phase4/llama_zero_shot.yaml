@@ -1,0 +1,13 @@
+model_name: meta-llama/Meta-Llama-3-8B-Instruct
+prompt_type: zero_shot
+max_new_tokens: 8
+temperature: 0.0
+do_sample: false
+top_p: 1.0
+few_shot_examples_path: configs/phase4/few_shot_examples.json
+batch_size: 1
+output_dir: outputs/phase4
+use_4bit: true
+max_input_chars: 3500
+max_samples: null
+seed: 42

@@ -1,0 +1,15 @@
+Classify this Victorian periodical paragraph by authorship.
+
+Choose ONE author from this list only:
+{author_list}
+
+Paragraph:
+{paragraph_text}
+
+Use brief reasoning if needed, then end with exactly this final line:
+Final answer: <exact author name>
+
+Reply using ONLY brief reasoning plus the final answer line.
+Do not repeat the prompt.
+Do not copy examples.
+Do not output anything after the final answer line.
