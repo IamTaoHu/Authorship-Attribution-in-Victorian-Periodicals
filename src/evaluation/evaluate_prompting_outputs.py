@@ -1,4 +1,4 @@
-"""Aggregate Phase 4 decoder prompting predictions into metrics tables."""
+"""Aggregate Phase 4 decoder prompting runs into consolidated result tables."""
 
 from __future__ import annotations
 
@@ -11,18 +11,14 @@ import warnings
 
 import numpy as np
 import pandas as pd
-from sklearn.metrics import (
-    accuracy_score,
-    confusion_matrix,
-    precision_recall_fscore_support,
-)
+from sklearn.metrics import precision_recall_fscore_support
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 
-CANONICAL_AUTHORS = [
+VALID_AUTHORS = [
     "Leslie Stephen",
     "John Morley",
     "Eliza Lynn Linton",
@@ -30,19 +26,8 @@ CANONICAL_AUTHORS = [
     "Anne Mozley",
     "James Fitzjames Stephen",
 ]
-INVALID_LABEL = "__INVALID__"
-PREDICTION_LABELS = CANONICAL_AUTHORS + [INVALID_LABEL]
-REQUIRED_COLUMNS = {
-    "sample_id",
-    "true_author",
-    "predicted_author",
-    "raw_output",
-    "parsed_status",
-    "prompt_type",
-    "model_name",
-}
-VALID_PROMPT_TYPES = {"zero_shot", "cot_zero_shot", "few_shot"}
-DECODER_RESULT_COLUMNS = [
+INVALID_PREDICTION = "__INVALID__"
+BENCHMARK_COLUMNS = [
     "run_name",
     "model_name",
     "prompt_type",
@@ -54,119 +39,217 @@ DECODER_RESULT_COLUMNS = [
     "avg_output_length_chars",
     "avg_inference_time_sec",
     "total_inference_time_sec",
-    "avg_input_tokens",
-    "avg_output_tokens",
-    "tokens_per_sec",
-    "predictions_path",
 ]
-DECODER_COMPARISON_COLUMNS = [
-    "model_name",
-    "zero_shot_accuracy",
-    "zero_shot_macro_f1",
-    "cot_zero_shot_accuracy",
-    "cot_zero_shot_macro_f1",
-    "few_shot_accuracy",
-    "few_shot_macro_f1",
-    "best_prompt_type",
-    "best_accuracy",
-    "best_macro_f1",
-]
-PROMPT_TYPE_SUMMARY_COLUMNS = [
-    "prompt_type",
-    "accuracy_mean",
-    "accuracy_std",
-    "accuracy_max",
-    "macro_f1_mean",
-    "macro_f1_std",
-    "macro_f1_max",
-    "invalid_output_rate_mean",
-    "invalid_output_rate_std",
-    "invalid_output_rate_max",
-]
-MODEL_SUMMARY_COLUMNS = [
-    "model_name",
-    "best_accuracy",
-    "best_macro_f1",
-    "mean_accuracy",
-    "mean_macro_f1",
-    "best_prompt_type",
-]
-SKIPPED_COLUMNS = [
+PARSED_STATUS_COLUMNS = [
     "run_name",
-    "predictions_path",
-    "skip_reason",
-]
-ENCODER_DECODER_COLUMNS = [
-    "model_family",
     "model_name",
     "prompt_type",
-    "accuracy",
-    "macro_f1",
-    "source_phase",
-    "run_name",
+    "parsed_status",
+    "count",
+    "rate",
 ]
+PREDICTION_DISTRIBUTION_COLUMNS = [
+    "run_name",
+    "model_name",
+    "prompt_type",
+    "predicted_author",
+    "count",
+    "rate",
+]
+SKIPPED_COLUMNS = ["run_name", "run_dir", "skip_reason"]
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Aggregate Phase 4 decoder prompting outputs.")
     parser.add_argument("--phase4_dir", type=Path, default=Path("outputs/phase4"))
-    parser.add_argument(
-        "--phase3_table",
-        type=Path,
-        default=Path("outputs/phase3/tables/final_encoder_results_table.csv"),
-    )
     parser.add_argument("--output_dir", type=Path, default=Path("outputs/phase4/tables"))
-    parser.add_argument("--strict", action="store_true")
+    parser.add_argument("--strict", action="store_true", help="Raise instead of skipping malformed run directories.")
     return parser.parse_args()
+
+
+def main() -> None:
+    args = parse_args()
+    phase4_dir = resolve_repo_path(args.phase4_dir)
+    output_dir = resolve_repo_path(args.output_dir)
+
+    rows: list[dict[str, Any]] = []
+    parsed_status_rows: list[dict[str, Any]] = []
+    prediction_rows: list[dict[str, Any]] = []
+    skipped_rows: list[dict[str, str]] = []
+
+    candidates = discover_run_dirs(phase4_dir, output_dir)
+    print_discovered_runs(candidates)
+
+    for run_dir in candidates:
+        try:
+            run_result = process_run_dir(run_dir)
+        except Exception as exc:
+            if args.strict:
+                raise
+            skipped_rows.append(skipped_row(run_dir, str(exc)))
+            continue
+        rows.append(run_result.benchmark_row)
+        parsed_status_rows.extend(run_result.parsed_status_rows)
+        prediction_rows.extend(run_result.prediction_distribution_rows)
+
+    benchmark = sort_benchmark(pd.DataFrame(rows, columns=BENCHMARK_COLUMNS))
+    parsed_status = sort_detail_table(pd.DataFrame(parsed_status_rows, columns=PARSED_STATUS_COLUMNS))
+    prediction_distribution = sort_detail_table(
+        pd.DataFrame(prediction_rows, columns=PREDICTION_DISTRIBUTION_COLUMNS)
+    )
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+    benchmark.to_csv(output_dir / "benchmark_summary.csv", index=False)
+    dataframe_to_markdown(benchmark).write_text_to(output_dir / "benchmark_summary.md")
+    parsed_status.to_csv(output_dir / "parsed_status_summary.csv", index=False)
+    prediction_distribution.to_csv(output_dir / "prediction_distribution.csv", index=False)
+    benchmark.to_csv(output_dir / "final_decoder_results_table.csv", index=False)
+
+    print_skipped_runs(skipped_rows)
+    print_leaderboard(benchmark)
+    print(f"\nWrote Phase 4 tables to {output_dir}")
+
+
+class MarkdownTable(str):
+    def write_text_to(self, path: Path) -> None:
+        path.write_text(str(self) + "\n", encoding="utf-8")
+
+
+class RunResult:
+    def __init__(
+        self,
+        benchmark_row: dict[str, Any],
+        parsed_status_rows: list[dict[str, Any]],
+        prediction_distribution_rows: list[dict[str, Any]],
+    ) -> None:
+        self.benchmark_row = benchmark_row
+        self.parsed_status_rows = parsed_status_rows
+        self.prediction_distribution_rows = prediction_distribution_rows
 
 
 def resolve_repo_path(path: Path) -> Path:
     return path if path.is_absolute() else PROJECT_ROOT / path
 
 
-def discover_prediction_files(phase4_dir: Path) -> list[Path]:
-    """Return existing Phase 4 prediction files, ignoring folders without predictions."""
+def discover_run_dirs(phase4_dir: Path, output_dir: Path) -> list[Path]:
     if not phase4_dir.exists():
         warnings.warn(f"Phase 4 directory does not exist: {phase4_dir}", RuntimeWarning, stacklevel=2)
         return []
-    return sorted(phase4_dir.glob("*/predictions.csv"))
+    resolved_output_dir = output_dir.resolve()
+    return [
+        path
+        for path in sorted(phase4_dir.iterdir(), key=lambda item: item.name)
+        if path.is_dir() and path.resolve() != resolved_output_dir
+    ]
 
 
-def validate_predictions_df(df: pd.DataFrame, predictions_path: Path) -> None:
-    """Validate required columns and canonical true-author labels."""
+def process_run_dir(run_dir: Path) -> RunResult:
+    predictions_path = run_dir / "predictions.csv"
+    runtime_path = run_dir / "runtime.json"
+    if not predictions_path.exists():
+        raise ValueError("missing predictions.csv")
+    if not runtime_path.exists():
+        raise ValueError("missing runtime.json")
+
+    df = read_predictions(predictions_path)
+    runtime = read_runtime(runtime_path)
+    validate_predictions(df)
+    metadata = run_metadata(run_dir, df, runtime)
+
+    normalized_true = df["true_author"].map(normalize_author)
+    normalized_pred = normalized_prediction_series(df)
+    metric_pred = normalized_pred.where(normalized_pred.isin(VALID_AUTHORS), INVALID_PREDICTION)
+    invalid_mask = invalid_output_mask(df, normalized_pred, run_dir)
+    n_samples = int(len(df))
+
+    _, _, macro_f1, _ = precision_recall_fscore_support(
+        normalized_true,
+        metric_pred,
+        labels=VALID_AUTHORS,
+        average="macro",
+        zero_division=0,
+    )
+    _, _, weighted_f1, _ = precision_recall_fscore_support(
+        normalized_true,
+        metric_pred,
+        labels=VALID_AUTHORS,
+        average="weighted",
+        zero_division=0,
+    )
+
+    benchmark_row = {
+        **metadata,
+        "n_samples": n_samples,
+        "accuracy": compute_accuracy(df, normalized_true, normalized_pred),
+        "macro_f1": float(macro_f1),
+        "weighted_f1": float(weighted_f1),
+        "invalid_output_rate": float(invalid_mask.mean()) if n_samples else np.nan,
+        "avg_output_length_chars": mean_raw_output_length(df),
+        "avg_inference_time_sec": average_inference_time(df, runtime),
+        "total_inference_time_sec": total_inference_time(df, runtime),
+    }
+    return RunResult(
+        benchmark_row=benchmark_row,
+        parsed_status_rows=build_parsed_status_rows(df, metadata),
+        prediction_distribution_rows=build_prediction_distribution_rows(normalized_pred, metadata),
+    )
+
+
+def read_predictions(path: Path) -> pd.DataFrame:
+    try:
+        df = pd.read_csv(path)
+    except Exception as exc:
+        raise ValueError(f"could not read predictions.csv: {exc}") from exc
     if df.empty:
         raise ValueError("predictions.csv is empty")
-    missing = sorted(REQUIRED_COLUMNS - set(df.columns))
-    if missing:
-        raise ValueError(f"predictions.csv is missing required columns: {missing}")
-    true_authors = df["true_author"].map(normalize_author)
-    invalid_true = sorted(set(true_authors) - set(CANONICAL_AUTHORS))
+    return df
+
+
+def read_runtime(path: Path) -> dict[str, Any]:
+    try:
+        with path.open("r", encoding="utf-8") as file:
+            payload = json.load(file)
+    except Exception as exc:
+        raise ValueError(f"could not read runtime.json: {exc}") from exc
+    if not isinstance(payload, dict):
+        raise ValueError("runtime.json does not contain a JSON object")
+    return payload
+
+
+def validate_predictions(df: pd.DataFrame) -> None:
+    if "true_author" not in df.columns:
+        raise ValueError("predictions.csv is missing required column: true_author")
+    normalized_true = df["true_author"].map(normalize_author)
+    invalid_true = sorted(set(normalized_true) - set(VALID_AUTHORS))
     if invalid_true:
         raise ValueError(f"predictions.csv has non-canonical true_author values: {invalid_true}")
-    model_names = unique_nonempty(df["model_name"])
-    prompt_types = unique_nonempty(df["prompt_type"])
-    if len(model_names) != 1 or len(prompt_types) != 1:
-        raise ValueError("predictions.csv has missing model_name or prompt_type metadata")
-    if prompt_types[0] not in VALID_PROMPT_TYPES:
-        raise ValueError(f"predictions.csv has unknown prompt_type: {prompt_types[0]!r}")
+    if "predicted_author" not in df.columns:
+        warnings.warn(
+            "predictions.csv is missing predicted_author; all predictions will be treated as invalid",
+            RuntimeWarning,
+            stacklevel=2,
+        )
+    if "raw_output" not in df.columns:
+        warnings.warn(
+            "predictions.csv is missing raw_output; output length will be blank",
+            RuntimeWarning,
+            stacklevel=2,
+        )
 
 
-def infer_run_metadata(df: pd.DataFrame, predictions_path: Path) -> dict[str, str]:
-    """Infer stable run metadata from a predictions dataframe."""
+def run_metadata(run_dir: Path, df: pd.DataFrame, runtime: dict[str, Any]) -> dict[str, str]:
     return {
-        "run_name": predictions_path.parent.name,
-        "model_name": first_unique_nonempty(df["model_name"]) if "model_name" in df else "",
-        "prompt_type": first_unique_nonempty(df["prompt_type"]) if "prompt_type" in df else "",
+        "run_name": str(runtime.get("run_name") or run_dir.name),
+        "model_name": str(runtime.get("model_name") or first_unique(df, "model_name") or ""),
+        "prompt_type": str(runtime.get("prompt_type") or first_unique(df, "prompt_type") or ""),
     }
 
 
-def first_unique_nonempty(series: pd.Series) -> str:
-    values = unique_nonempty(series)
-    return values[0] if values else ""
-
-
-def unique_nonempty(series: pd.Series) -> list[str]:
-    return [str(value).strip() for value in series.dropna().unique() if str(value).strip()]
+def first_unique(df: pd.DataFrame, column: str) -> str | None:
+    if column not in df.columns:
+        return None
+    values = [str(value).strip() for value in df[column].dropna().unique() if str(value).strip()]
+    return values[0] if values else None
 
 
 def normalize_author(value: Any) -> str:
@@ -175,355 +258,213 @@ def normalize_author(value: Any) -> str:
     return " ".join(str(value).split())
 
 
-def normalize_prediction(value: Any) -> str:
-    author = normalize_author(value)
-    return author if author in CANONICAL_AUTHORS else INVALID_LABEL
+def normalized_prediction_series(df: pd.DataFrame) -> pd.Series:
+    if "predicted_author" not in df.columns:
+        return pd.Series([""] * len(df), index=df.index, dtype="object")
+    return df["predicted_author"].map(normalize_author)
 
 
-def compute_run_metrics(df: pd.DataFrame, predictions_path: Path) -> dict[str, Any]:
-    """Compute aggregate, per-author, parser, and runtime metrics for one run."""
-    metadata = infer_run_metadata(df, predictions_path)
-    y_true = df["true_author"].map(normalize_author).to_numpy()
-    y_pred = df["predicted_author"].map(normalize_prediction).to_numpy()
-    n_samples = int(len(df))
-
-    macro_precision, macro_recall, macro_f1, _ = precision_recall_fscore_support(
-        y_true,
-        y_pred,
-        labels=CANONICAL_AUTHORS,
-        average="macro",
-        zero_division=0,
-    )
-    weighted_precision, weighted_recall, weighted_f1, _ = precision_recall_fscore_support(
-        y_true,
-        y_pred,
-        labels=CANONICAL_AUTHORS,
-        average="weighted",
-        zero_division=0,
-    )
-    per_precision, per_recall, per_f1, per_support = precision_recall_fscore_support(
-        y_true,
-        y_pred,
-        labels=CANONICAL_AUTHORS,
-        zero_division=0,
-    )
-
-    per_author = [
-        {
-            "author": author,
-            "precision": float(per_precision[index]),
-            "recall": float(per_recall[index]),
-            "f1": float(per_f1[index]),
-            "support": int(per_support[index]),
-        }
-        for index, author in enumerate(CANONICAL_AUTHORS)
-    ]
-    matrix = confusion_matrix(y_true, y_pred, labels=PREDICTION_LABELS)[: len(CANONICAL_AUTHORS), :]
-    invalid_mask = pd.Series(y_pred).eq(INVALID_LABEL)
-    output_lengths = df["raw_output"].fillna("").astype(str).str.len()
-    input_tokens = numeric_column(df, "input_tokens")
-    output_tokens = numeric_column(df, "output_tokens")
-    inference_time = numeric_column(df, "inference_time_sec")
-    total_inference_time = optional_sum(inference_time)
-    total_output_tokens = optional_sum(output_tokens)
-
-    return {
-        **metadata,
-        "predictions_path": str(predictions_path),
-        "n_samples": n_samples,
-        "accuracy": float(accuracy_score(y_true, y_pred)),
-        "macro_precision": float(macro_precision),
-        "macro_recall": float(macro_recall),
-        "macro_f1": float(macro_f1),
-        "weighted_precision": float(weighted_precision),
-        "weighted_recall": float(weighted_recall),
-        "weighted_f1": float(weighted_f1),
-        "per_author": per_author,
-        "confusion_matrix": matrix.astype(int).tolist(),
-        "confusion_matrix_rows": CANONICAL_AUTHORS,
-        "confusion_matrix_columns": PREDICTION_LABELS,
-        "parse_status_counts": df["parsed_status"].fillna("").astype(str).value_counts(dropna=False).to_dict(),
-        "invalid_output_count": int(invalid_mask.sum()),
-        "invalid_output_rate": float(invalid_mask.mean()) if n_samples else np.nan,
-        "avg_output_length_chars": optional_mean(output_lengths),
-        "avg_inference_time_sec": optional_mean(inference_time),
-        "total_inference_time_sec": total_inference_time,
-        "avg_input_tokens": optional_mean(input_tokens),
-        "avg_output_tokens": optional_mean(output_tokens),
-        "tokens_per_sec": (
-            float(total_output_tokens / total_inference_time)
-            if total_output_tokens is not None and total_inference_time and total_inference_time > 0
-            else np.nan
-        ),
-    }
-
-
-def numeric_column(df: pd.DataFrame, column: str) -> pd.Series | None:
-    if column not in df:
-        return None
-    values = pd.to_numeric(df[column], errors="coerce")
-    return values.dropna()
-
-
-def optional_mean(values: pd.Series | None) -> float:
-    if values is None or values.empty:
-        return np.nan
-    return float(values.mean())
-
-
-def optional_sum(values: pd.Series | None) -> float | None:
-    if values is None or values.empty:
-        return None
-    return float(values.sum())
-
-
-def write_per_run_outputs(metrics: dict[str, Any], run_dir: Path) -> None:
-    """Write per-run JSON metrics, per-author report, and confusion matrix."""
-    run_dir.mkdir(parents=True, exist_ok=True)
-    json_payload = json_ready(metrics)
-    (run_dir / "metrics.json").write_text(json.dumps(json_payload, indent=2), encoding="utf-8")
-    pd.DataFrame(metrics["per_author"]).to_csv(run_dir / "classification_report.csv", index=False)
-    matrix = pd.DataFrame(
-        metrics["confusion_matrix"],
-        index=metrics["confusion_matrix_rows"],
-        columns=metrics["confusion_matrix_columns"],
-    )
-    matrix.index.name = "true_author"
-    matrix.columns.name = "predicted_author"
-    matrix.to_csv(run_dir / "confusion_matrix.csv")
-
-
-def json_ready(value: Any) -> Any:
-    if isinstance(value, dict):
-        return {str(key): json_ready(item) for key, item in value.items()}
-    if isinstance(value, list):
-        return [json_ready(item) for item in value]
-    if isinstance(value, np.integer):
-        return int(value)
-    if isinstance(value, np.floating):
-        return None if not np.isfinite(value) else float(value)
-    if isinstance(value, float):
-        return None if not np.isfinite(value) else value
-    return value
-
-
-def aggregate_decoder_results(metrics_rows: list[dict[str, Any]]) -> pd.DataFrame:
-    """Build one decoder result row per valid run."""
-    rows = []
-    for metrics in metrics_rows:
-        rows.append({column: metrics.get(column) for column in DECODER_RESULT_COLUMNS})
-    frame = pd.DataFrame(rows, columns=DECODER_RESULT_COLUMNS)
-    return sort_by_metric(frame, "macro_f1")
-
-
-def build_decoder_comparison_table(decoder_results: pd.DataFrame) -> pd.DataFrame:
-    """Build report-ready model by prompt-type comparison table."""
-    if decoder_results.empty:
-        return pd.DataFrame(columns=DECODER_COMPARISON_COLUMNS)
-    rows: list[dict[str, Any]] = []
-    for model_name, group in decoder_results.groupby("model_name", dropna=False):
-        row: dict[str, Any] = {column: np.nan for column in DECODER_COMPARISON_COLUMNS}
-        row["model_name"] = model_name
-        for prompt_type in ("zero_shot", "cot_zero_shot", "few_shot"):
-            prompt_rows = group[group["prompt_type"] == prompt_type]
-            if prompt_rows.empty:
-                continue
-            best = prompt_rows.sort_values("macro_f1", ascending=False, na_position="last").iloc[0]
-            row[f"{prompt_type}_accuracy"] = best["accuracy"]
-            row[f"{prompt_type}_macro_f1"] = best["macro_f1"]
-        best_overall = group.sort_values("macro_f1", ascending=False, na_position="last").iloc[0]
-        row["best_prompt_type"] = best_overall["prompt_type"]
-        row["best_accuracy"] = best_overall["accuracy"]
-        row["best_macro_f1"] = best_overall["macro_f1"]
-        rows.append(row)
-    return sort_by_metric(pd.DataFrame(rows, columns=DECODER_COMPARISON_COLUMNS), "best_macro_f1")
-
-
-def build_prompt_type_summary(decoder_results: pd.DataFrame) -> pd.DataFrame:
-    """Summarize decoder results by prompt type."""
-    if decoder_results.empty:
-        return pd.DataFrame(columns=PROMPT_TYPE_SUMMARY_COLUMNS)
-    summary = (
-        decoder_results.groupby("prompt_type", dropna=False)
-        .agg(
-            accuracy_mean=("accuracy", "mean"),
-            accuracy_std=("accuracy", "std"),
-            accuracy_max=("accuracy", "max"),
-            macro_f1_mean=("macro_f1", "mean"),
-            macro_f1_std=("macro_f1", "std"),
-            macro_f1_max=("macro_f1", "max"),
-            invalid_output_rate_mean=("invalid_output_rate", "mean"),
-            invalid_output_rate_std=("invalid_output_rate", "std"),
-            invalid_output_rate_max=("invalid_output_rate", "max"),
-        )
-        .reset_index()
-    )
-    return summary[PROMPT_TYPE_SUMMARY_COLUMNS]
-
-
-def build_model_summary(decoder_results: pd.DataFrame) -> pd.DataFrame:
-    """Summarize decoder results by model."""
-    if decoder_results.empty:
-        return pd.DataFrame(columns=MODEL_SUMMARY_COLUMNS)
-    rows = []
-    for model_name, group in decoder_results.groupby("model_name", dropna=False):
-        best = group.sort_values("macro_f1", ascending=False, na_position="last").iloc[0]
-        rows.append(
-            {
-                "model_name": model_name,
-                "best_accuracy": best["accuracy"],
-                "best_macro_f1": best["macro_f1"],
-                "mean_accuracy": group["accuracy"].mean(),
-                "mean_macro_f1": group["macro_f1"].mean(),
-                "best_prompt_type": best["prompt_type"],
-            }
-        )
-    return sort_by_metric(pd.DataFrame(rows, columns=MODEL_SUMMARY_COLUMNS), "best_macro_f1")
-
-
-def load_encoder_baseline_table(phase3_table: Path) -> pd.DataFrame:
-    """Load the Phase 3 encoder baseline table, returning an empty frame on failure."""
-    if not phase3_table.exists():
-        warnings.warn(f"Phase 3 encoder table not found: {phase3_table}", RuntimeWarning, stacklevel=2)
-        return pd.DataFrame(columns=ENCODER_DECODER_COLUMNS)
-    try:
-        frame = pd.read_csv(phase3_table)
-    except Exception as exc:
-        warnings.warn(f"Could not read Phase 3 encoder table {phase3_table}: {exc}", RuntimeWarning, stacklevel=2)
-        return pd.DataFrame(columns=ENCODER_DECODER_COLUMNS)
-    required = {"experiment_name", "model_name", "accuracy", "macro_f1"}
-    missing = sorted(required - set(frame.columns))
-    if missing:
-        warnings.warn(f"Phase 3 encoder table missing columns {missing}: {phase3_table}", RuntimeWarning, stacklevel=2)
-        return pd.DataFrame(columns=ENCODER_DECODER_COLUMNS)
-    mapped = pd.DataFrame(
-        {
-            "model_family": "encoder",
-            "model_name": frame["model_name"],
-            "prompt_type": "supervised_finetune",
-            "accuracy": pd.to_numeric(frame["accuracy"], errors="coerce"),
-            "macro_f1": pd.to_numeric(frame["macro_f1"], errors="coerce"),
-            "source_phase": "phase3",
-            "run_name": frame["experiment_name"],
-        }
-    )
-    return mapped[ENCODER_DECODER_COLUMNS]
-
-
-def build_encoder_vs_decoder_table(encoder_rows: pd.DataFrame, decoder_results: pd.DataFrame) -> pd.DataFrame:
-    """Combine Phase 3 encoder rows and Phase 4 decoder prompting rows."""
-    decoder_rows = pd.DataFrame(columns=ENCODER_DECODER_COLUMNS)
-    if not decoder_results.empty:
-        decoder_rows = pd.DataFrame(
-            {
-                "model_family": "decoder_prompting",
-                "model_name": decoder_results["model_name"],
-                "prompt_type": decoder_results["prompt_type"],
-                "accuracy": decoder_results["accuracy"],
-                "macro_f1": decoder_results["macro_f1"],
-                "source_phase": "phase4",
-                "run_name": decoder_results["run_name"],
-            }
-        )
-    combined = pd.concat([encoder_rows, decoder_rows], ignore_index=True)
-    if combined.empty:
-        return pd.DataFrame(columns=ENCODER_DECODER_COLUMNS)
-    return sort_by_metric(combined[ENCODER_DECODER_COLUMNS], "macro_f1")
-
-
-def sort_by_metric(frame: pd.DataFrame, column: str) -> pd.DataFrame:
-    if frame.empty or column not in frame:
-        return frame
-    sorted_frame = frame.copy()
-    sorted_frame[column] = pd.to_numeric(sorted_frame[column], errors="coerce")
-    return sorted_frame.sort_values(column, ascending=False, na_position="last")
-
-
-def save_csv(frame: pd.DataFrame, path: Path, columns: list[str]) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    if frame.empty:
-        frame = pd.DataFrame(columns=columns)
-    else:
-        for column in columns:
-            if column not in frame:
-                frame[column] = np.nan
-        frame = frame[columns]
-    frame.to_csv(path, index=False)
-
-
-def save_markdown(frame: pd.DataFrame, path: Path) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    try:
-        markdown = frame.to_markdown(index=False)
-    except ImportError:
+def invalid_output_mask(df: pd.DataFrame, normalized_pred: pd.Series, run_dir: Path) -> pd.Series:
+    invalid_prediction = normalized_pred.eq("") | ~normalized_pred.isin(VALID_AUTHORS)
+    if "parsed_status" not in df.columns:
         warnings.warn(
-            f"tabulate is not available; writing CSV-style text fallback to {path}",
+            f"{run_dir.name}: parsed_status column is missing; invalid rate uses canonical prediction validity only",
             RuntimeWarning,
             stacklevel=2,
         )
-        markdown = frame.to_csv(index=False)
-    path.write_text(markdown + "\n", encoding="utf-8")
+        return invalid_prediction
+    parsed_status = df["parsed_status"].map(normalize_status)
+    invalid_status = parsed_status.eq("") | ~parsed_status.str.startswith("ok", na=False)
+    return invalid_prediction | invalid_status
 
 
-def skipped_row(predictions_path: Path, reason: str) -> dict[str, str]:
+def normalize_status(value: Any) -> str:
+    if pd.isna(value):
+        return ""
+    return " ".join(str(value).strip().lower().split())
+
+
+def compute_accuracy(df: pd.DataFrame, normalized_true: pd.Series, normalized_pred: pd.Series) -> float:
+    if "correct" in df.columns:
+        correct = df["correct"].map(parse_bool)
+        if correct.notna().any():
+            return float(correct.fillna(False).mean())
+    return float(normalized_true.eq(normalized_pred).mean())
+
+
+def parse_bool(value: Any) -> bool | None:
+    if pd.isna(value):
+        return None
+    if isinstance(value, bool):
+        return value
+    text = str(value).strip().lower()
+    if text in {"true", "1", "yes", "y"}:
+        return True
+    if text in {"false", "0", "no", "n"}:
+        return False
+    return None
+
+
+def mean_raw_output_length(df: pd.DataFrame) -> float:
+    if "raw_output" not in df.columns:
+        return np.nan
+    return float(df["raw_output"].fillna("").astype(str).str.len().mean())
+
+
+def average_inference_time(df: pd.DataFrame, runtime: dict[str, Any]) -> float:
+    prediction_times = numeric_column(df, "inference_time_sec")
+    if not prediction_times.empty:
+        return float(prediction_times.mean())
+    return numeric_value(runtime.get("avg_time_sec"))
+
+
+def total_inference_time(df: pd.DataFrame, runtime: dict[str, Any]) -> float:
+    prediction_times = numeric_column(df, "inference_time_sec")
+    if not prediction_times.empty:
+        return float(prediction_times.sum())
+    return numeric_value(runtime.get("total_time_sec"))
+
+
+def numeric_column(df: pd.DataFrame, column: str) -> pd.Series:
+    if column not in df.columns:
+        return pd.Series(dtype="float64")
+    return pd.to_numeric(df[column], errors="coerce").dropna()
+
+
+def numeric_value(value: Any) -> float:
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return np.nan
+
+
+def build_parsed_status_rows(df: pd.DataFrame, metadata: dict[str, str]) -> list[dict[str, Any]]:
+    n_samples = len(df)
+    if "parsed_status" in df.columns:
+        statuses = df["parsed_status"].map(status_for_table)
+    else:
+        statuses = pd.Series(["__MISSING_COLUMN__"] * n_samples, index=df.index)
+    counts = statuses.value_counts(dropna=False).sort_index()
+    return [
+        {
+            **metadata,
+            "parsed_status": status,
+            "count": int(count),
+            "rate": float(count / n_samples) if n_samples else np.nan,
+        }
+        for status, count in counts.items()
+    ]
+
+
+def status_for_table(value: Any) -> str:
+    status = normalize_status(value)
+    return status if status else "__BLANK__"
+
+
+def build_prediction_distribution_rows(
+    normalized_pred: pd.Series,
+    metadata: dict[str, str],
+) -> list[dict[str, Any]]:
+    n_samples = len(normalized_pred)
+    predictions = normalized_pred.where(normalized_pred.isin(VALID_AUTHORS), INVALID_PREDICTION)
+    counts = predictions.value_counts(dropna=False).sort_index()
+    return [
+        {
+            **metadata,
+            "predicted_author": predicted_author,
+            "count": int(count),
+            "rate": float(count / n_samples) if n_samples else np.nan,
+        }
+        for predicted_author, count in counts.items()
+    ]
+
+
+def sort_benchmark(frame: pd.DataFrame) -> pd.DataFrame:
+    if frame.empty:
+        return pd.DataFrame(columns=BENCHMARK_COLUMNS)
+    sorted_frame = frame.copy()
+    sorted_frame["accuracy"] = pd.to_numeric(sorted_frame["accuracy"], errors="coerce")
+    sorted_frame["macro_f1"] = pd.to_numeric(sorted_frame["macro_f1"], errors="coerce")
+    return sorted_frame.sort_values(
+        ["accuracy", "macro_f1", "run_name"],
+        ascending=[False, False, True],
+        na_position="last",
+    )[BENCHMARK_COLUMNS]
+
+
+def sort_detail_table(frame: pd.DataFrame) -> pd.DataFrame:
+    if frame.empty:
+        return frame
+    sort_columns = [column for column in ["run_name", "model_name", "prompt_type"] if column in frame.columns]
+    ascending = [True] * len(sort_columns)
+    if "count" in frame.columns:
+        frame = frame.copy()
+        frame["count"] = pd.to_numeric(frame["count"], errors="coerce")
+        sort_columns.extend(["count"])
+        ascending.append(False)
+    for detail_column in ["parsed_status", "predicted_author"]:
+        if detail_column in frame.columns:
+            sort_columns.append(detail_column)
+            ascending.append(True)
+            break
+    return frame.sort_values(sort_columns, ascending=ascending, na_position="last")
+
+
+def dataframe_to_markdown(frame: pd.DataFrame) -> MarkdownTable:
+    if frame.empty:
+        return MarkdownTable("| No Phase 4 runs found |\n| --- |")
+    headers = [str(column) for column in frame.columns]
+    lines = [
+        "| " + " | ".join(headers) + " |",
+        "| " + " | ".join("---" for _ in headers) + " |",
+    ]
+    for _, row in frame.iterrows():
+        values = [format_markdown_value(row[column]) for column in frame.columns]
+        lines.append("| " + " | ".join(values) + " |")
+    return MarkdownTable("\n".join(lines))
+
+
+def format_markdown_value(value: Any) -> str:
+    if pd.isna(value):
+        return ""
+    if isinstance(value, float):
+        return f"{value:.6g}"
+    return str(value).replace("|", "\\|")
+
+
+def skipped_row(run_dir: Path, reason: str) -> dict[str, str]:
     return {
-        "run_name": predictions_path.parent.name,
-        "predictions_path": str(predictions_path),
+        "run_name": run_dir.name,
+        "run_dir": str(run_dir),
         "skip_reason": reason,
     }
 
 
-def process_prediction_file(predictions_path: Path, strict: bool) -> tuple[dict[str, Any] | None, dict[str, str] | None]:
-    try:
-        df = pd.read_csv(predictions_path)
-        validate_predictions_df(df, predictions_path)
-    except Exception as exc:
-        if strict:
-            raise
-        reason = str(exc)
-        warnings.warn(f"Skipping {predictions_path}: {reason}", RuntimeWarning, stacklevel=2)
-        return None, skipped_row(predictions_path, reason)
-    metrics = compute_run_metrics(df, predictions_path)
-    write_per_run_outputs(metrics, predictions_path.parent)
-    return metrics, None
+def print_discovered_runs(candidates: list[Path]) -> None:
+    print("Discovered Phase 4 run directories:")
+    if not candidates:
+        print("  none")
+        return
+    for path in candidates:
+        print(f"  {path.name}")
 
 
-def main() -> None:
-    args = parse_args()
-    phase4_dir = resolve_repo_path(args.phase4_dir)
-    phase3_table = resolve_repo_path(args.phase3_table)
-    output_dir = resolve_repo_path(args.output_dir)
-    output_dir.mkdir(parents=True, exist_ok=True)
-
-    metrics_rows: list[dict[str, Any]] = []
-    skipped_rows: list[dict[str, str]] = []
-    for predictions_path in discover_prediction_files(phase4_dir):
-        metrics, skipped = process_prediction_file(predictions_path, strict=args.strict)
-        if metrics is not None:
-            metrics_rows.append(metrics)
-        if skipped is not None:
-            skipped_rows.append(skipped)
-
-    decoder_results = aggregate_decoder_results(metrics_rows)
-    decoder_comparison = build_decoder_comparison_table(decoder_results)
-    prompt_summary = build_prompt_type_summary(decoder_results)
-    model_summary = build_model_summary(decoder_results)
+def print_skipped_runs(skipped_rows: list[dict[str, str]]) -> None:
+    print("\nSkipped run directories:")
+    if not skipped_rows:
+        print("  none")
+        return
     skipped = pd.DataFrame(skipped_rows, columns=SKIPPED_COLUMNS)
-    encoder_rows = load_encoder_baseline_table(phase3_table)
-    encoder_decoder = build_encoder_vs_decoder_table(encoder_rows, decoder_results)
+    print(skipped.to_string(index=False))
 
-    save_csv(decoder_results, output_dir / "decoder_results.csv", DECODER_RESULT_COLUMNS)
-    save_markdown(decoder_results, output_dir / "decoder_results.md")
-    save_csv(decoder_comparison, output_dir / "decoder_comparison_table.csv", DECODER_COMPARISON_COLUMNS)
-    save_csv(prompt_summary, output_dir / "decoder_prompt_type_summary.csv", PROMPT_TYPE_SUMMARY_COLUMNS)
-    save_csv(model_summary, output_dir / "decoder_model_summary.csv", MODEL_SUMMARY_COLUMNS)
-    save_csv(skipped, output_dir / "skipped_invalid_runs.csv", SKIPPED_COLUMNS)
-    save_csv(encoder_decoder, output_dir / "encoder_vs_decoder_comparison.csv", ENCODER_DECODER_COLUMNS)
-    save_markdown(encoder_decoder, output_dir / "encoder_vs_decoder_comparison.md")
 
-    print(f"valid_runs={len(metrics_rows)}")
-    print(f"skipped_runs={len(skipped_rows)}")
-    print(f"output_dir={output_dir}")
+def print_leaderboard(benchmark: pd.DataFrame) -> None:
+    print("\nFinal ranked leaderboard:")
+    if benchmark.empty:
+        print("  no valid runs")
+        return
+    columns = ["run_name", "model_name", "prompt_type", "accuracy", "macro_f1", "invalid_output_rate"]
+    print(benchmark[columns].to_string(index=False))
 
 
 if __name__ == "__main__":
