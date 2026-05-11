@@ -3,8 +3,10 @@ transformers
 datasets
 evaluate
 accelerate
+bitsandbytes
 peft
 trl
+safetensors
 sentence-transformers
 transformers[sentencepiece]
 

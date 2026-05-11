@@ -1,0 +1,53 @@
+experiment_name: mistral_7b_qlora_smoke_seed42
+model_name: mistralai/Mistral-7B-Instruct-v0.3
+model_short_name: mistral_7b_smoke
+output_dir: outputs/phase5/checkpoints
+dataset_name: celvaigh/periad
+text_column: text
+label_column: author
+train_split: train
+test_split: test
+author_labels:
+  - Leslie Stephen
+  - John Morley
+  - Eliza Lynn Linton
+  - George Henry Lewes
+  - Anne Mozley
+  - James Fitzjames Stephen
+prompt_template: phase5_standard
+max_length: 512
+max_new_tokens: 8
+batch_size: 1
+eval_batch_size: 1
+gradient_accumulation_steps: 1
+learning_rate: 2.0e-4
+epochs: 1
+warmup_ratio: 0.0
+weight_decay: 0.0
+lr_scheduler_type: linear
+seed: 42
+lora_r: 4
+lora_alpha: 8
+lora_dropout: 0.05
+lora_target_modules:
+  - q_proj
+  - k_proj
+  - v_proj
+  - o_proj
+  - gate_proj
+  - up_proj
+  - down_proj
+bnb_4bit: true
+bnb_4bit_quant_type: nf4
+bnb_4bit_compute_dtype: float16
+bnb_4bit_use_double_quant: true
+gradient_checkpointing: false
+fp16: true
+bf16: false
+logging_steps: 1
+eval_steps: 5
+save_steps: 5
+save_total_limit: 1
+report_to: []
+num_train_samples: 24
+num_eval_samples: 12
