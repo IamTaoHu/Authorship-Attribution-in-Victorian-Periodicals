@@ -8,6 +8,7 @@ datasets/cache/
 datasets/processed/
 exports/
 outputs/
+docs/
 
 # Training and logging
 wandb/
@@ -18,6 +19,7 @@ logs/
 .env
 kaggle.json
 *.key
+*.zip
 
 # Large model/checkpoint files
 *.pt

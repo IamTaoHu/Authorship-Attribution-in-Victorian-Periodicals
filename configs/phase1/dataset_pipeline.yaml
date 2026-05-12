@@ -1,0 +1,54 @@
+phase: phase1
+name: dataset_pipeline
+
+datasets_config: configs/datasets.yaml
+
+datasets:
+  periad:
+    name: celvaigh/periad
+    train_split: train
+    test_split: test
+    expected_train_rows: 8279
+    expected_test_rows: 3549
+    expected_total_rows: 11828
+    canonical_authors:
+      - Leslie Stephen
+      - John Morley
+      - Eliza Lynn Linton
+      - George Henry Lewes
+      - Anne Mozley
+      - James Fitzjames Stephen
+  veaa:
+    name: NicholasSynovic/ModifiedVEAA
+
+paths:
+  hf_cache:
+    manager: dataset_dir
+    parts: [cache]
+  processed_periad:
+    manager: dataset_dir
+    parts: [processed, periad]
+  processed_veaa:
+    manager: dataset_dir
+    parts: [processed, veaa]
+  tables:
+    manager: phase_artifact_dir
+    phase: phase1
+    parts: [tables]
+  reports:
+    manager: phase_artifact_dir
+    phase: phase1
+    parts: [reports]
+  plots:
+    manager: phase_artifact_dir
+    phase: phase1
+    parts: [plots]
+
+tokenization:
+  max_lengths: [256, 512, 1024]
+  tokenizers:
+    - bert-base-uncased
+    - roberta-base
+    - microsoft/deberta-v3-base
+    - answerdotai/ModernBERT-base
+    - mistralai/Mistral-7B-Instruct-v0.3
