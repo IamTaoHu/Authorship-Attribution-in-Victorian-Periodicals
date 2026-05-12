@@ -1,126 +1,41 @@
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-.pytest_cache/
-.mypy_cache/
-.ruff_cache/
-.coverage
-htmlcov/
-build/
-dist/
-*.egg-info/
+# Machine-specific configuration
+configs/paths.local.yaml
 
-# Virtual environments
-.venv/
-venv/
-env/
-ENV/
-
-# Environment and local configuration
-.env
-.env.*
-!.env.example
-
-# Jupyter
-.ipynb_checkpoints/
-*.nbconvert.ipynb
-
-# Notebook/runtime outputs
-# Keep notebooks themselves reviewable, but ignore generated export artifacts.
-notebooks/**/outputs/
-notebooks/**/.ipynb_checkpoints/
-
-# Dataset and model caches
-.cache/
-cache/
-.hf_cache/
-.huggingface/
-huggingface/
-transformers_cache/
-hf_cache/
-data/cache/*
-!data/cache/.gitkeep
-
-# Large data files
-data/raw/*
-!data/raw/.gitkeep
-data/processed/*
-!data/processed/.gitkeep
-*.arrow
-*.parquet
-*.feather
-*.h5
-*.hdf5
-*.sqlite
-*.db
-
-# Local wheel/download artifacts
-# Dependency wheels should be installed from package indexes or documented externally.
-wheels/
-*.whl
-docs/
-
-# Experiment outputs
+# Local artifacts and generated outputs
+artifacts/
+checkpoints/
+datasets/cache/
+datasets/processed/
+exports/
 outputs/
-outputs/*/
-!outputs/checkpoints/
-!outputs/logs/
-!outputs/metrics/
-!outputs/plots/
-!outputs/predictions/
-outputs/checkpoints/*
-!outputs/checkpoints/.gitkeep
-outputs/logs/*
-!outputs/logs/.gitkeep
-outputs/metrics/*
-!outputs/metrics/.gitkeep
-outputs/plots/*
-!outputs/plots/.gitkeep
-outputs/predictions/*
-!outputs/predictions/.gitkeep
-AGENTS.md
-CURRENT_STATE.md
-PROJECT_MAP.md
-PROJECT_MAP.md
-TASK_BOARD.md
 
-# Common ML artifacts
-*.ckpt
+# Training and logging
+wandb/
+runs/
+logs/
+
+# Secrets
+.env
+kaggle.json
+*.key
+
+# Large model/checkpoint files
 *.pt
 *.pth
 *.bin
 *.safetensors
+*.ckpt
 *.onnx
-*.tflite
-*.pb
-*.joblib
-*.pkl
-*.pickle
-checkpoint/
-checkpoints/
-checkpoint-*/
-**/checkpoint/
-**/checkpoints/
-**/checkpoint-*/
-.kaggle/
-trainer_state.json
-optimizer.pt
-scheduler.pt
-rng_state.pth
-training_args.bin
-model.safetensors
-pytorch_model.bin
-adapter_model.safetensors
-adapter_model.bin
 
-# Experiment tracking
-wandb/
-mlruns/
-runs/
-lightning_logs/
-tensorboard/
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
 
-# OS files
+# Jupyter
+.ipynb_checkpoints/
+
+# OS/editor
 .DS_Store
 Thumbs.db

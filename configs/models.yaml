@@ -1,0 +1,25 @@
+encoders:
+  bert_base:
+    name: bert-base-uncased
+  roberta_base:
+    name: roberta-base
+  roberta_large:
+    name: roberta-large
+  deberta_v3_base:
+    name: microsoft/deberta-v3-base
+  modernbert_base:
+    name: answerdotai/ModernBERT-base
+
+decoders:
+  mistral_7b_instruct:
+    name: mistralai/Mistral-7B-Instruct-v0.3
+  llama3_8b_instruct:
+    name: meta-llama/Meta-Llama-3-8B-Instruct
+    gated: true
+  gemma2_9b_it:
+    name: google/gemma-2-9b-it
+    gated: true
+
+embeddings:
+  sentence_transformer_default:
+    name: sentence-transformers/all-MiniLM-L6-v2

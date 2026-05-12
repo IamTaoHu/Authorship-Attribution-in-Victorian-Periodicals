@@ -1,0 +1,27 @@
+datasets:
+  periad:
+    source: huggingface
+    name: celvaigh/periad
+    train_split: train
+    test_split: test
+    task: authorship_attribution
+    expected_train_rows: 8279
+    expected_test_rows: 3549
+    expected_total_rows: 11828
+    authors:
+      - Leslie Stephen
+      - John Morley
+      - Eliza Lynn Linton
+      - George Henry Lewes
+      - Anne Mozley
+      - James Fitzjames Stephen
+
+  veaa:
+    source: huggingface
+    name: NicholasSynovic/ModifiedVEAA
+    task: benchmark_comparison
+
+cache:
+  use_hf_cache: true
+  local_cache_dir_key: datasets_root
+  processed_dir_name: processed

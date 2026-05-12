@@ -1,41 +1,25 @@
-# Core NLP
+torch
 transformers
 datasets
 evaluate
 accelerate
-bitsandbytes
 peft
 trl
+bitsandbytes
 safetensors
-sentence-transformers
-transformers[sentencepiece]
-
-# ML / Data
-torch
-tiktoken
 sentencepiece
-protobuf
+protobuf<6
 scikit-learn
 pandas
 numpy
-
-# Topic Modelling
+matplotlib
+seaborn
+plotly
 bertopic
 gensim
 pyLDAvis
 umap-learn
 hdbscan
-
-# Visualization
-matplotlib
-seaborn
-plotly
-tabulate
-
-# Utilities / Configuration / Notebooks
-tqdm
+sentence-transformers
 pyyaml
-hydra-core
-jupyter
-wandb
-tensorboard
+tqdm

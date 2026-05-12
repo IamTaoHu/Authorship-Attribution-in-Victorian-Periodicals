@@ -1,0 +1,11 @@
+paths:
+  workspace_root: /path/to/Authorship-Attribution
+  repo_root: /path/to/Authorship-Attribution/repo/Authorship-Attribution-in-Victorian-Periodicals
+  artifacts_root: /path/to/Authorship-Attribution/artifacts
+  checkpoints_root: /path/to/Authorship-Attribution/checkpoints
+  datasets_root: /path/to/Authorship-Attribution/datasets
+  exports_root: /path/to/Authorship-Attribution/exports
+
+runtime:
+  default_environment: local
+  cloud_training_environment: colab
