@@ -1,0 +1,64 @@
+phase: phase3
+experiment_name: deberta_v3_base_seed42_fp32_lr1e5_len256
+model_name: microsoft/deberta-v3-base
+baseline_reference: roberta_large_phase2
+local_practical: true
+final_benchmark: false
+
+max_length: 256
+per_device_train_batch_size: 2
+per_device_eval_batch_size: 8
+learning_rate: 1.0e-5
+num_train_epochs: 4
+weight_decay: 0.01
+warmup_ratio: 0.1
+seed: 42
+gradient_accumulation_steps: 8
+dataloader_num_workers: 0
+max_grad_norm: 0.5
+optim: adamw_torch
+eval_strategy: epoch
+save_strategy: epoch
+metric_for_best_model: macro_f1
+save_total_limit: 2
+load_best_model_at_end: true
+logging_steps: 25
+fp16: false
+bf16: false
+amp_backend: none
+use_safetensors: true
+torch_dtype: float32
+force_float32: true
+
+smoke_test:
+  train_per_label: 2
+  eval_per_label: 1
+  num_train_epochs: 1
+  per_device_train_batch_size: 2
+  per_device_eval_batch_size: 4
+  gradient_accumulation_steps: 1
+  save_strategy: "no"
+  eval_strategy: "no"
+  fp16: false
+  bf16: false
+  amp_backend: none
+
+paths:
+  dataset:
+    manager: dataset_dir
+    parts: [processed, periad]
+  run_artifacts:
+    manager: phase_artifact_dir
+    phase: phase3
+    parts: [runs, deberta_v3_base_seed42_fp32_lr1e5_len256]
+  tables:
+    manager: phase_artifact_dir
+    phase: phase3
+    parts: [tables]
+  plots:
+    manager: phase_artifact_dir
+    phase: phase3
+    parts: [plots]
+  checkpoint:
+    manager: checkpoint_dir
+    parts: [phase3, deberta_v3_base_seed42_fp32_lr1e5_len256]
