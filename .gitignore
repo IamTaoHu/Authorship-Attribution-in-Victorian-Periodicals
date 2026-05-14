@@ -8,7 +8,6 @@ datasets/cache/
 datasets/processed/
 exports/
 outputs/
-docs/
 
 # Training and logging
 wandb/
