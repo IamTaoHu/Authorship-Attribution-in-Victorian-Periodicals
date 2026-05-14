@@ -23,6 +23,15 @@ from src.utils.paths import phase_artifact_dir  # noqa: E402
 REQUIRED_RUN_FILES = ("predictions.csv", "metrics.json", "classification_report.csv", "confusion_matrix.csv", "run_config_resolved.yaml")
 PHASE2_ACCURACY = 0.9270
 PHASE2_MACRO_F1 = 0.9191
+FINAL_RUN_NAMES = (
+    "mistral_zero_shot",
+    "mistral_few_shot",
+    "llama3_zero_shot",
+    "llama3_few_shot",
+    "gemma2_zero_shot",
+    "gemma2_few_shot",
+)
+FINAL_N_SAMPLES = 3549
 
 
 def markdown_table(frame: pd.DataFrame) -> str:
@@ -75,6 +84,52 @@ def build_row(run_dir: Path) -> dict[str, Any] | None:
     }
 
 
+def is_diagnostic_path(run_dir: Path, runs_dir: Path) -> bool:
+    try:
+        relative_parts = run_dir.relative_to(runs_dir).parts
+    except ValueError:
+        relative_parts = run_dir.parts
+    lowered = {part.lower() for part in relative_parts}
+    return bool(lowered.intersection({"diagnostic", "test"}))
+
+
+def include_final_row(row: dict[str, Any], run_dir: Path, runs_dir: Path) -> bool:
+    run_name = str(row.get("run_name", run_dir.name))
+    if is_diagnostic_path(run_dir, runs_dir):
+        print(f"WARNING: Excluding diagnostic run directory from final report: {run_dir}")
+        return False
+    if run_name not in FINAL_RUN_NAMES:
+        print(f"WARNING: Excluding non-final Phase 4 run from final report: {run_name}")
+        return False
+    if bool(row.get("valid_run")) is not True:
+        print(f"WARNING: Excluding invalid final run {run_name}; valid_run={row.get('valid_run')!r}")
+        return False
+    n_samples = row.get("n_samples")
+    if n_samples is None or n_samples <= 0:
+        print(f"WARNING: Excluding final run {run_name}; n_samples={n_samples!r}")
+        return False
+    if str(row.get("invalid_reason") or "").strip():
+        print(f"WARNING: Excluding final run {run_name}; invalid_reason is not empty")
+        return False
+    return True
+
+
+def warn_final_run_health(results: pd.DataFrame, discovered: set[str]) -> None:
+    for run_name in FINAL_RUN_NAMES:
+        if run_name not in discovered:
+            print(f"WARNING: Expected final run is missing: {run_name}")
+            continue
+        row = results.loc[results["run_name"].astype(str) == run_name]
+        if row.empty:
+            print(f"WARNING: Expected final run was not included in final-only outputs: {run_name}")
+            continue
+        n_samples = int(row.iloc[0].get("n_samples", 0))
+        if n_samples != FINAL_N_SAMPLES:
+            print(f"WARNING: Expected final run {run_name} has n_samples={n_samples}, expected {FINAL_N_SAMPLES}")
+        if bool(row.iloc[0].get("valid_run")) is not True:
+            print(f"WARNING: Expected final run {run_name} has valid_run={row.iloc[0].get('valid_run')!r}")
+
+
 def read_per_author_reports(results: pd.DataFrame, runs_dir: Path) -> pd.DataFrame:
     rows: list[pd.DataFrame] = []
     for _, result in results.iterrows():
@@ -95,7 +150,7 @@ def read_per_author_reports(results: pd.DataFrame, runs_dir: Path) -> pd.DataFra
     return pd.concat(rows, ignore_index=True)
 
 
-def write_report(results: pd.DataFrame, per_author: pd.DataFrame, path: Path) -> None:
+def write_report(results: pd.DataFrame, per_author: pd.DataFrame, path: Path, *, final_only: bool = False) -> None:
     lines = [
         "# Phase 4 Decoder Prompting Report",
         "",
@@ -106,11 +161,10 @@ def write_report(results: pd.DataFrame, per_author: pd.DataFrame, path: Path) ->
         f"- RoBERTa-large accuracy: {PHASE2_ACCURACY:.4f}",
         f"- RoBERTa-large macro F1: {PHASE2_MACRO_F1:.4f}",
         "",
-        "## Decoder Runs",
-        "",
-        markdown_table(results),
-        "",
     ]
+    if final_only:
+        lines.extend(["## Reporting Scope", "", "Final-only report excludes diagnostic TinyLlama smoke runs.", ""])
+    lines.extend(["## Decoder Runs", "", markdown_table(results), ""])
     if not per_author.empty:
         lines.extend(["## Per-Author F1", "", markdown_table(per_author[["run_name", "label", "f1-score", "support"]]), ""])
     path.write_text("\n".join(lines), encoding="utf-8")
@@ -119,18 +173,30 @@ def write_report(results: pd.DataFrame, per_author: pd.DataFrame, path: Path) ->
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.parse_args()
+    parser.add_argument("--final-only", action="store_true", help="Report only the six final Phase 4 decoder benchmark runs.")
+    args = parser.parse_args()
     runs_dir = phase_artifact_dir("phase4", "runs")
     tables_dir = phase_artifact_dir("phase4", "tables")
     reports_dir = phase_artifact_dir("phase4", "reports")
     rows = []
+    discovered_final_runs: set[str] = set()
     for run_dir in sorted(path for path in runs_dir.iterdir() if path.is_dir()):
+        if args.final_only and is_diagnostic_path(run_dir, runs_dir):
+            print(f"WARNING: Excluding diagnostic run directory from final report: {run_dir}")
+            continue
         row = build_row(run_dir)
         if row is not None:
+            run_name = str(row.get("run_name", run_dir.name))
+            if run_name in FINAL_RUN_NAMES:
+                discovered_final_runs.add(run_name)
+            if args.final_only and not include_final_row(row, run_dir, runs_dir):
+                continue
             rows.append(row)
     results = pd.DataFrame(rows)
     if not results.empty:
         results = results.sort_values(["macro_f1", "accuracy"], ascending=False, na_position="last")
+    if args.final_only:
+        warn_final_run_health(results, discovered_final_runs)
     results_csv = tables_dir / "decoder_prompting_results.csv"
     results_md = tables_dir / "decoder_prompting_results.md"
     results.to_csv(results_csv, index=False)
@@ -138,10 +204,15 @@ def main() -> int:
     print(f"Wrote {results_csv}")
     print(f"Wrote {results_md}")
     per_author = read_per_author_reports(results, runs_dir)
+    if args.final_only and len(per_author) != len(FINAL_RUN_NAMES) * len(CANONICAL_AUTHORS):
+        print(
+            "WARNING: final-only per-author table has "
+            f"{len(per_author)} rows; expected {len(FINAL_RUN_NAMES) * len(CANONICAL_AUTHORS)}"
+        )
     per_author_path = tables_dir / "phase4_per_author_f1.csv"
     per_author.to_csv(per_author_path, index=False)
     print(f"Wrote {per_author_path}")
-    write_report(results, per_author, reports_dir / "phase4_decoder_prompting_report.md")
+    write_report(results, per_author, reports_dir / "phase4_decoder_prompting_report.md", final_only=args.final_only)
     return 0
 
 

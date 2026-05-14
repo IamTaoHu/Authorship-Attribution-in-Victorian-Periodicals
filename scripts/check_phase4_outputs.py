@@ -75,6 +75,15 @@ PLOTS = (
     "per_author_f1_heatmap.png",
 )
 WEIGHT_SUFFIXES = (".pt", ".pth", ".bin", ".safetensors", ".ckpt", ".onnx")
+FINAL_RUN_NAMES = (
+    "mistral_zero_shot",
+    "mistral_few_shot",
+    "llama3_zero_shot",
+    "llama3_few_shot",
+    "gemma2_zero_shot",
+    "gemma2_few_shot",
+)
+FINAL_N_SAMPLES = 3549
 
 
 def check_path(path: Path) -> bool:
@@ -158,6 +167,10 @@ def check_metrics(path: Path) -> bool:
     return True
 
 
+def load_metrics(path: Path) -> dict[str, Any]:
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
 def check_run(run_dir: Path) -> bool:
     missing = 0
     for filename in REQUIRED_RUN_FILES:
@@ -170,7 +183,92 @@ def check_run(run_dir: Path) -> bool:
     return missing == 0
 
 
-def check_tables_reports_plots(phase4_dir: Path, allow_missing_runs: bool) -> bool:
+def check_final_run(run_dir: Path) -> bool:
+    ok = check_run(run_dir)
+    metrics_path = run_dir / "metrics.json"
+    predictions_path = run_dir / "predictions.csv"
+    if not metrics_path.exists() or not predictions_path.exists():
+        return False
+    metrics = load_metrics(metrics_path)
+    run_name = metrics.get("run_name", run_dir.name)
+    if run_name != run_dir.name:
+        print(f"[MISMATCH] {metrics_path}: run_name={run_name!r}, directory={run_dir.name!r}")
+        ok = False
+    if metrics.get("valid_run") is not True:
+        print(f"[MISMATCH] {metrics_path}: valid_run={metrics.get('valid_run')!r}")
+        ok = False
+    if metrics.get("n_samples") != FINAL_N_SAMPLES:
+        print(f"[MISMATCH] {metrics_path}: n_samples={metrics.get('n_samples')!r}, expected {FINAL_N_SAMPLES}")
+        ok = False
+    if str(metrics.get("invalid_reason") or "").strip():
+        print(f"[MISMATCH] {metrics_path}: invalid_reason is not empty")
+        ok = False
+    prediction_rows = len(pd.read_csv(predictions_path))
+    if prediction_rows != metrics.get("n_samples"):
+        print(f"[MISMATCH] {predictions_path}: rows={prediction_rows}, n_samples={metrics.get('n_samples')!r}")
+        ok = False
+    return ok
+
+
+def check_final_tables_and_report(phase4_dir: Path) -> bool:
+    ok = True
+    expected = set(FINAL_RUN_NAMES)
+    results_path = phase4_dir / "tables" / "decoder_prompting_results.csv"
+    per_author_path = phase4_dir / "tables" / "phase4_per_author_f1.csv"
+    report_path = phase4_dir / "reports" / "phase4_decoder_prompting_report.md"
+    if not check_path(results_path):
+        ok = False
+    else:
+        results = pd.read_csv(results_path)
+        run_names = set(results.get("run_name", pd.Series(dtype=str)).astype(str))
+        extras = sorted(run_names.difference(expected))
+        missing = sorted(expected.difference(run_names))
+        if len(results) != len(FINAL_RUN_NAMES):
+            print(f"[MISMATCH] {results_path}: rows={len(results)}, expected {len(FINAL_RUN_NAMES)}")
+            ok = False
+        if extras:
+            print(f"[MISMATCH] {results_path}: non-final runs present: {', '.join(extras)}")
+            ok = False
+        if missing:
+            print(f"[MISSING] {results_path}: final runs absent: {', '.join(missing)}")
+            ok = False
+        if results["run_name"].astype(str).str.contains("tinyllama", case=False, na=False).any():
+            print(f"[MISMATCH] {results_path}: contains tinyllama_smoke")
+            ok = False
+        if "valid_run" in results.columns and (results["valid_run"].astype(str).str.lower() != "true").any():
+            print(f"[MISMATCH] {results_path}: contains valid_run=false rows")
+            ok = False
+        if "n_samples" in results.columns and (pd.to_numeric(results["n_samples"], errors="coerce") <= 0).any():
+            print(f"[MISMATCH] {results_path}: contains n_samples <= 0 rows")
+            ok = False
+        if "invalid_reason" in results.columns and results["invalid_reason"].fillna("").astype(str).str.strip().ne("").any():
+            print(f"[MISMATCH] {results_path}: contains non-empty invalid_reason rows")
+            ok = False
+    if not check_path(per_author_path):
+        ok = False
+    else:
+        per_author = pd.read_csv(per_author_path)
+        expected_rows = len(FINAL_RUN_NAMES) * 6
+        if len(per_author) != expected_rows:
+            print(f"[MISMATCH] {per_author_path}: rows={len(per_author)}, expected {expected_rows}")
+            ok = False
+        if "run_name" in per_author.columns and per_author["run_name"].astype(str).str.contains("tinyllama_smoke", case=False, na=False).any():
+            print(f"[MISMATCH] {per_author_path}: contains tinyllama_smoke")
+            ok = False
+    if not check_path(report_path):
+        ok = False
+    else:
+        report = report_path.read_text(encoding="utf-8")
+        if "tinyllama_smoke" in report.lower():
+            print(f"[MISMATCH] {report_path}: contains tinyllama_smoke")
+            ok = False
+        if "Final-only report excludes diagnostic TinyLlama smoke runs." not in report:
+            print(f"[MISSING] {report_path}: final-only scope note")
+            ok = False
+    return ok
+
+
+def check_tables_reports_plots(phase4_dir: Path, allow_missing_runs: bool, final_only: bool = False) -> bool:
     ok = True
     for name in TABLES:
         path = phase4_dir / "tables" / name
@@ -190,6 +288,8 @@ def check_tables_reports_plots(phase4_dir: Path, allow_missing_runs: bool) -> bo
             print(f"[WARN] plot not generated yet: {path}")
             continue
         ok = check_path(path) and ok
+    if final_only:
+        ok = check_final_tables_and_report(phase4_dir) and ok
     return ok
 
 
@@ -223,6 +323,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--phase4_dir", default="artifacts/phase4")
     parser.add_argument("--allow_missing_runs", action="store_true")
+    parser.add_argument("--final-only", action="store_true", help="Validate only the six final Phase 4 decoder benchmark runs.")
     args = parser.parse_args()
     phase4_dir = resolve_phase4_dir(args.phase4_dir)
     print(f"Resolved phase4_dir: {phase4_dir}")
@@ -231,7 +332,10 @@ def main() -> int:
     ok = check_outputs_outside_repo(phase4_dir) and ok
     ok = check_tracked_weights() and ok
     runs_dir = phase4_dir / "runs"
-    run_dirs = sorted(path for path in runs_dir.iterdir() if path.is_dir()) if runs_dir.exists() else []
+    if args.final_only:
+        run_dirs = [runs_dir / name for name in FINAL_RUN_NAMES]
+    else:
+        run_dirs = sorted(path for path in runs_dir.iterdir() if path.is_dir()) if runs_dir.exists() else []
     if not run_dirs:
         if args.allow_missing_runs:
             print(f"[WARN] no Phase 4 runs found at {runs_dir}")
@@ -239,8 +343,15 @@ def main() -> int:
             print(f"[MISSING] no Phase 4 runs found at {runs_dir}")
             ok = False
     for run_dir in run_dirs:
-        ok = check_run(run_dir) and ok
-    ok = check_tables_reports_plots(phase4_dir, args.allow_missing_runs) and ok
+        if args.final_only:
+            if not run_dir.exists():
+                print(f"[MISSING] expected final run directory: {run_dir}")
+                ok = False
+                continue
+            ok = check_final_run(run_dir) and ok
+        else:
+            ok = check_run(run_dir) and ok
+    ok = check_tables_reports_plots(phase4_dir, args.allow_missing_runs, args.final_only) and ok
     if ok:
         print("Phase 4 output check passed.")
         return 0
