@@ -16,7 +16,12 @@ import pandas as pd
 import torch
 import yaml
 from sklearn.metrics import accuracy_score, classification_report, confusion_matrix, f1_score
-from transformers import AutoModelForCausalLM, AutoTokenizer, set_seed
+try:
+    from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig, set_seed
+except ImportError:
+    from transformers import AutoModelForCausalLM, AutoTokenizer, set_seed
+
+    BitsAndBytesConfig = None
 
 from src.prompting.phase4_parser import CANONICAL_AUTHORS, is_valid_parse, parse_phase4_output
 from src.prompting.phase4_prompts import build_prompt, load_or_build_few_shot_examples
@@ -106,6 +111,33 @@ def resolve_dtype(value: str) -> Any:
     raise ValueError(f"Unsupported torch_dtype: {value}")
 
 
+def resolve_4bit_compute_dtype(torch_dtype: Any) -> torch.dtype:
+    if torch_dtype == torch.bfloat16:
+        return torch.bfloat16
+    if torch_dtype == torch.float16:
+        return torch.float16
+    if torch.cuda.is_available() and torch.cuda.is_bf16_supported():
+        return torch.bfloat16
+    return torch.float16
+
+
+def build_quantization_config(config: dict[str, Any], torch_dtype: Any) -> Any | None:
+    if not bool(config.get("load_in_4bit", False)):
+        return None
+    if BitsAndBytesConfig is None:
+        raise RuntimeError("4-bit quantization requested but transformers.BitsAndBytesConfig is unavailable.")
+    try:
+        import bitsandbytes  # noqa: F401
+    except ImportError as exc:
+        raise RuntimeError("4-bit quantization requested but bitsandbytes is not installed or unavailable.") from exc
+    return BitsAndBytesConfig(
+        load_in_4bit=True,
+        bnb_4bit_quant_type="nf4",
+        bnb_4bit_compute_dtype=resolve_4bit_compute_dtype(torch_dtype),
+        bnb_4bit_use_double_quant=True,
+    )
+
+
 def load_generation_model(config: dict[str, Any]) -> tuple[Any, Any]:
     model_name = str(config["model_name"])
     token_env = str(config.get("hf_token_env", "HF_TOKEN"))
@@ -120,7 +152,7 @@ def load_generation_model(config: dict[str, Any]) -> tuple[Any, Any]:
     if torch_dtype != "auto":
         model_kwargs["torch_dtype"] = torch_dtype
     if bool(config.get("load_in_4bit", False)):
-        model_kwargs["load_in_4bit"] = True
+        model_kwargs["quantization_config"] = build_quantization_config(config, torch_dtype)
     tokenizer = AutoTokenizer.from_pretrained(model_name, **tokenizer_kwargs)
     if tokenizer.pad_token_id is None:
         tokenizer.pad_token = tokenizer.eos_token
