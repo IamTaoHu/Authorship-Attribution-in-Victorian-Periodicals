@@ -12,7 +12,7 @@ The project has moved to a unified workflow:
 - GitHub for source control only
 - Colab Pro for heavy GPU training, decoder inference, QLoRA, and large-model evaluation
 - Hugging Face for datasets and pretrained model downloads
-- local storage outside `repo/` for datasets, artifacts, checkpoints, exports, and backups
+- local storage outside `repo/` for datasets, artifacts, exports, and backups; Phase 5 active experiment outputs use ignored `outputs/phase5` and `checkpoints/phase5`
 
 Phase 0 infrastructure refactor is mostly complete. Path configuration, external storage conventions, Colab notebooks, and phase check scripts are in place.
 
@@ -38,7 +38,7 @@ The current decision is to use Colab Pro for heavy compute and keep permanent ou
 | Phase 2 - Encoder Baselines | Complete | `artifacts/phase2` BERT/RoBERTa runs, tables, report, and plots exist |
 | Phase 3 - Advanced Encoders | Complete | `artifacts/phase3` DeBERTa/ModernBERT final runs and visualizations exist |
 | Phase 4 - Decoder Prompting | Complete | six final decoder runs plus final-only tables/report/plots exist |
-| Phase 5 - QLoRA Decoder Fine-Tuning | Planned / not finalized | no validated Phase 5 artifact folder is present |
+| Phase 5 - QLoRA Decoder Fine-Tuning | Pipeline added / diagnostic-only locally | configs, scripts, validation, and Colab workflow added; full 7B-9B results are not validated until Colab runs finish |
 | Phase 6 - Ensemble | Planned | no implemented final artifact set |
 | Phase 7 - LDA Topic Modelling | Planned | dependencies exist, final phase implementation not present |
 | Phase 8 - BERTopic | Planned | dependencies exist, final phase implementation not present |
@@ -69,6 +69,16 @@ Final-only reporting excludes:
 
 TinyLlama exists only as a diagnostic smoke run and must not be treated as a final benchmark.
 
+## Phase 5 Pipeline State
+
+Phase 5 adds QLoRA decoder fine-tuning infrastructure for:
+
+- `mistralai/Mistral-7B-Instruct-v0.3`
+- `meta-llama/Meta-Llama-3-8B-Instruct`
+- `google/gemma-2-9b-it`
+
+Local Phase 5 work is diagnostic-only for RTX 3050 4GB. The diagnostic config uses a tiny sample budget and writes to `outputs/phase5/diagnostic` plus `checkpoints/phase5/diagnostic`. Full 7B-9B runs are intended for Colab and must not be represented as complete until real Colab training/evaluation artifacts exist.
+
 ## Immediate Next Task
 
-The next major task is Phase 5 preparation and infrastructure stabilization for QLoRA decoder fine-tuning. Do not claim final QLoRA results exist until validated Phase 5 artifacts are present.
+The next major task is running and validating the Phase 5 full QLoRA experiments on Colab. Do not claim final QLoRA results exist until `scripts/check_phase5_outputs.py --require_full_runs` passes.

@@ -46,9 +46,10 @@ This board reflects the current verified repository and artifact state.
 
 ## Phase 5 - QLoRA Decoder Fine-Tuning
 
-- [ ] Finalize QLoRA training and evaluation design.
-- [ ] Add or validate Phase 5 configs, scripts, and Colab workflow.
-- [ ] Define checkpoint and adapter backup policy.
+- [x] Finalize QLoRA training and evaluation design.
+- [x] Add Phase 5 configs, scripts, diagnostic runner, validator, and Colab workflow.
+- [x] Define ignored `outputs/phase5` and `checkpoints/phase5` checkpoint/adapters policy.
+- [x] Add RTX 3050 4GB diagnostic-only mode.
 - [ ] Run QLoRA training on Colab Pro.
 - [ ] Evaluate final QLoRA models on the fixed PERIAD test split.
 - [ ] Aggregate final Phase 5 results.

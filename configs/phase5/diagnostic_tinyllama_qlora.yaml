@@ -1,0 +1,58 @@
+phase: phase5
+run_name: tinyllama_qlora_diagnostic
+model_name: TinyLlama/TinyLlama-1.1B-Chat-v1.0
+mode: diagnostic
+final_benchmark: false
+local_diagnostic: true
+
+dataset:
+  processed_dir: datasets/processed/periad
+  train_split: train
+  eval_split: test
+  max_train_samples: 16
+  max_eval_samples: 8
+
+prompt:
+  max_length: 256
+  max_new_tokens: 12
+  max_input_chars: 1200
+  system_message: "You are an authorship attribution classifier. Answer with exactly one author name and no explanation."
+
+quantization:
+  load_in_4bit: true
+  bnb_4bit_quant_type: nf4
+  bnb_4bit_use_double_quant: true
+  bnb_4bit_compute_dtype: float16
+  allow_diagnostic_fallback_without_4bit: true
+
+lora:
+  r: 4
+  alpha: 8
+  dropout: 0.05
+  target_modules: auto
+  bias: none
+  task_type: CAUSAL_LM
+
+training:
+  seed: 42
+  max_steps: 5
+  num_train_epochs: 1
+  per_device_train_batch_size: 1
+  gradient_accumulation_steps: 1
+  learning_rate: 2.0e-4
+  warmup_steps: 0
+  logging_steps: 1
+  save_steps: 5
+  save_total_limit: 1
+  fp16: true
+  bf16: false
+  optim: paged_adamw_8bit
+  report_to: []
+
+generation:
+  do_sample: false
+  temperature: 0.0
+
+paths:
+  run_dir: outputs/phase5/diagnostic/runs/tinyllama_qlora_diagnostic
+  checkpoint_dir: checkpoints/phase5/diagnostic/tinyllama_qlora_diagnostic
