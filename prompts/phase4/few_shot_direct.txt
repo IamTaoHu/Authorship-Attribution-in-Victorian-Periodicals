@@ -1,0 +1,18 @@
+﻿You are an authorship attribution classifier for Victorian periodical prose.
+
+Choose exactly one author from this list:
+- Leslie Stephen
+- John Morley
+- Eliza Lynn Linton
+- George Henry Lewes
+- Anne Mozley
+- James Fitzjames Stephen
+
+Return exactly one JSON object and no other text:
+{{"author": "<one of the six canonical author names>"}}
+
+Examples:
+{examples}
+
+Paragraph:
+{text}

@@ -1,0 +1,17 @@
+﻿phase: phase4
+run_name: gemma2_zero_shot
+model_name: google/gemma-2-9b-it
+prompt_type: zero_shot_direct
+split: test
+max_samples: null
+seed: 42
+max_input_chars: 4000
+max_new_tokens: 32
+temperature: 0.0
+do_sample: false
+torch_dtype: bfloat16
+load_in_4bit: true
+output_dir: artifacts_root/phase4/runs/gemma2_zero_shot
+per_device_batch_size: 1
+trust_remote_code: false
+hf_token_env: HF_TOKEN

@@ -1,0 +1,17 @@
+﻿phase: phase4
+run_name: tinyllama_smoke
+model_name: TinyLlama/TinyLlama-1.1B-Chat-v1.0
+prompt_type: zero_shot_direct
+split: test
+max_samples: 6
+seed: 42
+max_input_chars: 2500
+max_new_tokens: 32
+temperature: 0.0
+do_sample: false
+torch_dtype: auto
+load_in_4bit: false
+output_dir: artifacts_root/phase4/runs/tinyllama_smoke
+per_device_batch_size: 1
+trust_remote_code: false
+hf_token_env: HF_TOKEN
