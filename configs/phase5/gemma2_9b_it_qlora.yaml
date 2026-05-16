@@ -13,7 +13,7 @@ dataset:
   max_eval_samples:
 
 prompt:
-  max_length: 1024
+  max_length: 768
   max_new_tokens: 16
   max_input_chars: 6000
   system_message: "You are an authorship attribution classifier. Answer with exactly one author name and no explanation."
@@ -39,6 +39,7 @@ training:
   num_train_epochs: 2
   per_device_train_batch_size: 1
   gradient_accumulation_steps: 8
+  gradient_checkpointing: true
   learning_rate: 2.0e-4
   warmup_ratio: 0.03
   logging_steps: 10
@@ -48,6 +49,12 @@ training:
   bf16: true
   optim: paged_adamw_8bit
   report_to: []
+
+# L4 OOM fallback:
+# max_length: 512
+# lora_r: 8
+# lora_alpha: 16
+# gradient_accumulation_steps: 16
 
 generation:
   do_sample: false

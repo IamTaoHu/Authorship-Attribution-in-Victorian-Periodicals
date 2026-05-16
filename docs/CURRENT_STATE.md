@@ -77,7 +77,7 @@ Phase 5 adds QLoRA decoder fine-tuning infrastructure for:
 - `meta-llama/Meta-Llama-3-8B-Instruct`
 - `google/gemma-2-9b-it`
 
-Local Phase 5 work is diagnostic-only for RTX 3050 4GB. The diagnostic config uses a tiny sample budget and writes to `outputs/phase5/diagnostic` plus `checkpoints/phase5/diagnostic`. Full 7B-9B runs are intended for Colab and must not be represented as complete until real Colab training/evaluation artifacts exist.
+Local Phase 5 work is diagnostic-only for RTX 3050 4GB. The diagnostic config uses a tiny sample budget and writes to `outputs/phase5/diagnostic` plus `checkpoints/phase5/diagnostic`. Full 7B-9B runs are intended for Colab and must not be represented as complete until real Colab training/evaluation artifacts exist. The Llama 3 8B and Gemma 2 9B full QLoRA defaults are tuned for Colab L4 24GB, with documented lower-memory fallback settings if L4 OOM occurs.
 
 ## Immediate Next Task
 

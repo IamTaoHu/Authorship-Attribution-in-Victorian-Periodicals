@@ -2,6 +2,8 @@
 
 This workflow runs the full Phase 5 decoder QLoRA experiments on Colab GPU hardware. Do not run the 7B-9B configs on the local RTX 3050 4GB machine.
 
+Hardware guidance: Mistral can run on A100 or L4. Llama 3 8B and Gemma 2 9B defaults are tuned for Colab L4 24GB. T4 is not recommended for the Gemma 2 9B full run, and TPU is not supported for this QLoRA pipeline.
+
 ## 1. Setup
 
 ```bash
@@ -50,6 +52,8 @@ The training scripts expect the processed PERIAD files and canonical six-author 
 
 ## 5. Run Full QLoRA Jobs
 
+The Llama 3 and Gemma 2 configs use L4 24GB practical defaults: `prompt.max_length: 768`, LoRA rank `16`, LoRA alpha `32`, and `training.gradient_accumulation_steps: 8`.
+
 Mistral:
 
 ```bash
@@ -96,9 +100,9 @@ Copy final metrics, predictions, reports, tables, and plots back to `outputs/pha
 
 ## 8. OOM Troubleshooting
 
-- Reduce `prompt.max_length` from `1024` to `768` or `512`.
-- Increase `training.gradient_accumulation_steps` instead of batch size.
+- For Llama 3 8B or Gemma 2 9B on L4, apply this fallback exactly if OOM occurs: `prompt.max_length: 512`, `lora.r: 8`, `lora.alpha: 16`, and `training.gradient_accumulation_steps: 16`.
 - Keep `per_device_train_batch_size: 1`.
-- Use `bf16` only on GPUs that support it; otherwise switch to `fp16`.
-- Reduce LoRA rank from `16` to `8` if memory remains tight.
+- Use A100 or L4 for Mistral; use L4 24GB or A100 for Llama 3 8B and Gemma 2 9B.
+- T4 is not recommended for the Gemma 2 9B full run.
+- TPU is not supported for this QLoRA pipeline.
 - Resume from the latest checkpoint after runtime interruption.

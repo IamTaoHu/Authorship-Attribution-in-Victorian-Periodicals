@@ -235,6 +235,7 @@ def build_training_args(config: dict[str, Any], checkpoint_path: Path) -> Traini
         "save_total_limit": int(train.get("save_total_limit", 2)),
         "fp16": bool(train.get("fp16", False) and torch.cuda.is_available()),
         "bf16": bool(train.get("bf16", False) and torch.cuda.is_available() and torch.cuda.is_bf16_supported()),
+        "gradient_checkpointing": bool(train.get("gradient_checkpointing", False)),
         "optim": str(train.get("optim", "adamw_torch")),
         "report_to": train.get("report_to", []),
         "remove_unused_columns": False,
@@ -252,6 +253,18 @@ def build_training_args(config: dict[str, Any], checkpoint_path: Path) -> Traini
         kwargs["optim"] = "adamw_torch"
     signature = inspect.signature(TrainingArguments.__init__).parameters
     return TrainingArguments(**{key: value for key, value in kwargs.items() if key in signature})
+
+
+def prepare_quantized_model_for_training(model: Any, config: dict[str, Any]) -> Any:
+    use_gradient_checkpointing = bool(config["training"].get("gradient_checkpointing", False))
+    kwargs: dict[str, Any] = {}
+    signature = inspect.signature(prepare_model_for_kbit_training).parameters
+    if "use_gradient_checkpointing" in signature:
+        kwargs["use_gradient_checkpointing"] = use_gradient_checkpointing
+    model = prepare_model_for_kbit_training(model, **kwargs)
+    if use_gradient_checkpointing and "use_gradient_checkpointing" not in signature and hasattr(model, "gradient_checkpointing_enable"):
+        model.gradient_checkpointing_enable()
+    return model
 
 
 class JsonlTrainer(Trainer):
@@ -292,7 +305,7 @@ def main() -> int:
 
     tokenizer, model, quantization_status = load_model_and_tokenizer(config)
     if quantization_status == "4bit":
-        model = prepare_model_for_kbit_training(model)
+        model = prepare_quantized_model_for_training(model, config)
     lora_cfg = config["lora"]
     peft_config = LoraConfig(
         r=int(lora_cfg["r"]),
