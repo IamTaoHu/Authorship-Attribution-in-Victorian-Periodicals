@@ -44,6 +44,7 @@ REQUIRED_FILES = (
     "plots/author_topic_stacked_bar.png",
     "plots/topic_entropy_by_author.png",
 )
+INTERACTIVE_HTML = "interactive/phase7_lda_pyldavis.html"
 
 
 def default_phase7_dir() -> Path:
@@ -179,9 +180,27 @@ def check_summary(root: Path) -> tuple[bool, dict]:
     return ok, summary
 
 
+def check_interactive_html(root: Path) -> bool:
+    path = root / INTERACTIVE_HTML
+    ok = check_path(path)
+    if not ok:
+        return False
+    try:
+        content = path.read_text(encoding="utf-8", errors="ignore")
+    except Exception as exc:
+        print(f"[MISMATCH] Could not read interactive HTML: {exc}")
+        return False
+    lowered = content.lower()
+    if "pyldavis" not in lowered and "ldavis" not in lowered:
+        print("[MISMATCH] interactive HTML does not contain pyLDAvis/ldavis markers")
+        return False
+    return True
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--phase7_dir", default=None)
+    parser.add_argument("--require_interactive", action="store_true")
     args = parser.parse_args()
     root = Path(args.phase7_dir).expanduser() if args.phase7_dir else default_phase7_dir()
 
@@ -196,6 +215,8 @@ def main() -> int:
     ok = check_model_selection(root) and ok
     ok = check_document_topics(root, summary) and ok
     ok = check_author_topics(root) and ok
+    if args.require_interactive:
+        ok = check_interactive_html(root) and ok
 
     if ok:
         print("Phase 7 output check passed.")
