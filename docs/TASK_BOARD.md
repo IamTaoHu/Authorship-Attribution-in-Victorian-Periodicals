@@ -59,10 +59,13 @@ This board reflects the current verified repository and artifact state.
 
 ## Phase 6 - Ensemble
 
-- [ ] Define ensemble candidates from encoder, prompting, and QLoRA outputs.
-- [ ] Implement ensemble voting/probability fusion where output formats allow it.
-- [ ] Evaluate ensembles on the fixed test split.
-- [ ] Generate ensemble comparison tables and plots.
+- [x] Define ensemble candidates from Phase 2-5 final encoder, prompting, and QLoRA outputs.
+- [x] Support exact and glob allowlists, including multi-seed Phase 2 discovery.
+- [x] Exclude diagnostic, smoke, invalid, and incomplete outputs from final reporting.
+- [x] Implement hard majority and weighted voting without retraining or decoder inference.
+- [x] Normalize invalid decoder predictions to `__INVALID__`, exclude them from votes, and report invalid rates.
+- [x] Evaluate ensembles on the fixed test split.
+- [x] Generate ensemble predictions, single-model tables, comparison tables, report, confusion matrices, and metric plots.
 
 ## Phase 7 - LDA Topic Modelling
 

@@ -1,0 +1,50 @@
+phase: phase6
+invalid_label: "__INVALID__"
+include_majority_vote_candidates: false
+exclude_tokens:
+  - smoke
+  - diagnostic
+  - invalid
+  - tinyllama
+  - test
+focus_authors:
+  - James Fitzjames Stephen
+  - Eliza Lynn Linton
+phases:
+  phase2:
+    enabled: true
+    architecture_group: encoder
+    exact_allowlist:
+      - bert_base
+      - roberta_base
+      - roberta_large
+    glob_allowlist:
+      - bert_base_seed*
+      - roberta_base_seed*
+      - roberta_large_seed*
+  phase3:
+    enabled: true
+    architecture_group: encoder
+    exact_allowlist:
+      - deberta_v3_base_seed42_colab_final
+      - modernbert_base_seed42_colab_final
+    glob_allowlist: []
+  phase4:
+    enabled: true
+    architecture_group: decoder
+    exact_allowlist:
+      - mistral_zero_shot
+      - mistral_few_shot
+      - llama3_zero_shot
+      - llama3_few_shot
+      - gemma2_zero_shot
+      - gemma2_few_shot
+    glob_allowlist: []
+  phase5:
+    enabled: true
+    architecture_group: decoder
+    exact_allowlist:
+      - mistral_qlora
+      - llama3_qlora
+      - gemma2_qlora
+    glob_allowlist: []

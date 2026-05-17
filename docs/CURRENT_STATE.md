@@ -39,7 +39,7 @@ The current decision is to use Colab Pro for heavy compute and keep permanent ou
 | Phase 3 - Advanced Encoders | Complete | `artifacts/phase3` DeBERTa/ModernBERT final runs and visualizations exist |
 | Phase 4 - Decoder Prompting | Complete | six final decoder runs plus final-only tables/report/plots exist |
 | Phase 5 - QLoRA Decoder Fine-Tuning | Full Colab runs complete / aggregation added | Mistral, Llama 3, and Gemma 2 full outputs can be aggregated into phase-level tables, report, and plots without retraining |
-| Phase 6 - Ensemble | Planned | no implemented final artifact set |
+| Phase 6 - Ensemble | Complete | ensemble predictions, single-model/ensemble tables, report, and plots exist under `artifacts/phase6` |
 | Phase 7 - LDA Topic Modelling | Planned | dependencies exist, final phase implementation not present |
 | Phase 8 - BERTopic | Planned | dependencies exist, final phase implementation not present |
 | Phase 9 - Topic-Aware Classification | Planned | no implemented final artifact set |
@@ -83,6 +83,20 @@ Canonical Phase 5 outputs remain in `outputs/phase5`. Lightweight browsable copi
 
 Phase 5 diagnostic artifacts may be absent in Colab Drive full-run environments. Full-run validation does not require diagnostic outputs unless `scripts/check_phase5_outputs.py --require_diagnostic` is passed.
 
+## Phase 6 Ensemble State
+
+Phase 6 is implemented after Phase 5 aggregation. It does not retrain models, run decoder inference, or modify checkpoints/adapters. It uses existing final predictions and metrics from Phase 2 encoder baselines, Phase 3 advanced encoders, Phase 4 final decoder prompting runs, and Phase 5 final QLoRA runs.
+
+Phase 6 outputs are written to workspace-level `artifacts/phase6`, with predictions, tables, plots, and reports separated by subfolder. Diagnostic, smoke, invalid, and incomplete outputs are excluded from final ensemble discovery. Invalid decoder predictions are normalized to `__INVALID__`, excluded from votes, and reported per candidate model.
+
+Implemented Phase 6 entry points:
+
+- `configs/phase6/ensemble.yaml`
+- `src/evaluation/ensemble_phase6.py`
+- `src/visualization/plot_phase6_results.py`
+- `scripts/run_phase6_ensemble.py`
+- `scripts/check_phase6_outputs.py`
+
 ## Immediate Next Task
 
-The next major task is using the completed Phase 5 tables and predictions in Phase 6 ensemble design.
+The next major task is Phase 7 LDA topic modelling.
