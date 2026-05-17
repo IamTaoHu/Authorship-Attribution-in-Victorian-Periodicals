@@ -55,6 +55,7 @@ This board reflects the current verified repository and artifact state.
 - [x] Evaluate final QLoRA models on the fixed PERIAD test split.
 - [x] Aggregate final Phase 5 results.
 - [x] Make diagnostic validation optional for full-run Phase 5 checks.
+- [x] Mirror lightweight Phase 5 reports, tables, plots, and run CSV/JSON/text files to `artifacts/phase5`.
 
 ## Phase 6 - Ensemble
 

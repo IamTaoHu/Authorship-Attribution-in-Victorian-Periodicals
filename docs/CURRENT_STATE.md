@@ -79,6 +79,8 @@ Phase 5 adds QLoRA decoder fine-tuning infrastructure for:
 
 Local Phase 5 work is diagnostic-only for RTX 3050 4GB. The diagnostic config uses a tiny sample budget and writes to `outputs/phase5/diagnostic` plus `checkpoints/phase5/diagnostic`. Full 7B-9B runs are intended for Colab. Mistral, Llama 3, and Gemma 2 full QLoRA outputs can now be aggregated from existing `outputs/phase5/runs/*` artifacts into phase-level tables, report, and plots without retraining. The Llama 3 8B and Gemma 2 9B full QLoRA defaults are tuned for Colab L4 24GB, with documented lower-memory fallback settings if L4 OOM occurs.
 
+Canonical Phase 5 outputs remain in `outputs/phase5`. Lightweight browsable copies are mirrored in workspace-level `artifacts/phase5` for presentation and review. Checkpoints and adapters remain in `checkpoints/phase5` and must not be copied into `artifacts/phase5`.
+
 Phase 5 diagnostic artifacts may be absent in Colab Drive full-run environments. Full-run validation does not require diagnostic outputs unless `scripts/check_phase5_outputs.py --require_diagnostic` is passed.
 
 ## Immediate Next Task
