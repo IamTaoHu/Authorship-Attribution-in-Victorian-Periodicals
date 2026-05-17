@@ -51,9 +51,10 @@ This board reflects the current verified repository and artifact state.
 - [x] Define ignored `outputs/phase5` and `checkpoints/phase5` checkpoint/adapters policy.
 - [x] Add RTX 3050 4GB diagnostic-only mode.
 - [x] Tune Llama 3 8B and Gemma 2 9B QLoRA defaults for Colab L4 24GB.
-- [ ] Run QLoRA training on Colab Pro.
-- [ ] Evaluate final QLoRA models on the fixed PERIAD test split.
-- [ ] Aggregate final Phase 5 results.
+- [x] Run QLoRA training on Colab Pro.
+- [x] Evaluate final QLoRA models on the fixed PERIAD test split.
+- [x] Aggregate final Phase 5 results.
+- [x] Make diagnostic validation optional for full-run Phase 5 checks.
 
 ## Phase 6 - Ensemble
 

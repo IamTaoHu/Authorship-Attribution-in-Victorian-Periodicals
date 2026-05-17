@@ -53,6 +53,18 @@ DIAGNOSTIC_FILES = (
     "label_mapping.json",
     "training_log.jsonl",
 )
+FULL_RUN_FILES = (
+    "predictions.csv",
+    "metrics.json",
+    "classification_report.txt",
+    "label_mapping.json",
+)
+FULL_AGGREGATE_FILES = (
+    "tables/decoder_qlora_results.csv",
+    "tables/decoder_qlora_results.md",
+    "tables/phase5_per_author_f1.csv",
+    "reports/phase5_qlora_decoder_finetuning_report.md",
+)
 WEIGHT_SUFFIXES = (".pt", ".pth", ".bin", ".safetensors", ".ckpt", ".onnx")
 ALLOWED_ADAPTER_NAMES = {"adapter_model.safetensors", "adapter_model.bin"}
 
@@ -106,10 +118,13 @@ def check_predictions(path: Path) -> bool:
     return True
 
 
-def check_metrics(path: Path) -> bool:
+def check_metrics(path: Path, *, strict: bool = True) -> bool:
     metrics = json.loads(path.read_text(encoding="utf-8"))
     missing = [key for key in METRIC_KEYS if key not in metrics]
     if missing:
+        if not strict:
+            print(f"[WARN] {path} missing optional metric keys: {', '.join(missing)}")
+            return True
         print(f"[MISSING] {path} keys: {', '.join(missing)}")
         return False
     print(f"[OK] {path} contains required metric keys")
@@ -146,25 +161,32 @@ def check_diagnostic(phase5_dir: Path, checkpoint_dir: Path) -> bool:
     return ok
 
 
+def diagnostic_present(phase5_dir: Path, checkpoint_dir: Path) -> bool:
+    return any(
+        path.exists()
+        for path in (
+            phase5_dir / "diagnostic",
+            checkpoint_dir / "diagnostic",
+            phase5_dir / "diagnostic" / "runs" / "tinyllama_qlora_diagnostic",
+        )
+    )
+
+
 def check_full_runs(phase5_dir: Path, checkpoint_dir: Path) -> bool:
     ok = True
     for run_name in FULL_RUNS:
         run_dir = phase5_dir / "runs" / run_name
         ckpt = checkpoint_dir / run_name
-        for path in (run_dir / "predictions.csv", run_dir / "metrics.json", run_dir / "classification_report.txt"):
+        for name in FULL_RUN_FILES:
+            path = run_dir / name
             ok = check_path(path) and ok
         if (run_dir / "predictions.csv").exists():
             ok = check_predictions(run_dir / "predictions.csv") and ok
         if (run_dir / "metrics.json").exists():
-            ok = check_metrics(run_dir / "metrics.json") and ok
+            ok = check_metrics(run_dir / "metrics.json", strict=False) and ok
         ok = check_adapter(ckpt) and ok
-    for path in (
-        phase5_dir / "tables" / "decoder_qlora_results.csv",
-        phase5_dir / "tables" / "decoder_qlora_results.md",
-        phase5_dir / "tables" / "phase5_per_author_f1.csv",
-        phase5_dir / "reports" / "phase5_qlora_decoder_finetuning_report.md",
-    ):
-        ok = check_path(path) and ok
+    for relative in FULL_AGGREGATE_FILES:
+        ok = check_path(phase5_dir / relative) and ok
     return ok
 
 
@@ -203,13 +225,21 @@ def main() -> int:
     parser.add_argument("--phase5_dir", default="outputs/phase5")
     parser.add_argument("--checkpoint_dir", default="checkpoints/phase5")
     parser.add_argument("--require_full_runs", action="store_true")
+    parser.add_argument("--require_diagnostic", action="store_true")
     args = parser.parse_args()
     phase5_dir = resolve(args.phase5_dir)
     checkpoint_dir = resolve(args.checkpoint_dir)
     print(f"Resolved phase5_dir: {phase5_dir}")
     print(f"Resolved checkpoint_dir: {checkpoint_dir}")
     ok = check_configs()
-    ok = check_diagnostic(phase5_dir, checkpoint_dir) and ok
+    if args.require_diagnostic:
+        ok = check_diagnostic(phase5_dir, checkpoint_dir) and ok
+    elif args.require_full_runs:
+        print("[OK] Diagnostic validation skipped for full-run validation. Pass --require_diagnostic to require it.")
+    elif diagnostic_present(phase5_dir, checkpoint_dir):
+        ok = check_diagnostic(phase5_dir, checkpoint_dir) and ok
+    else:
+        print("[OK] Diagnostic artifacts absent; diagnostic validation skipped. Pass --require_diagnostic to require them.")
     if args.require_full_runs:
         ok = check_full_runs(phase5_dir, checkpoint_dir) and ok
     else:

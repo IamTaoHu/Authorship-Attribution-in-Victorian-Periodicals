@@ -38,7 +38,7 @@ The current decision is to use Colab Pro for heavy compute and keep permanent ou
 | Phase 2 - Encoder Baselines | Complete | `artifacts/phase2` BERT/RoBERTa runs, tables, report, and plots exist |
 | Phase 3 - Advanced Encoders | Complete | `artifacts/phase3` DeBERTa/ModernBERT final runs and visualizations exist |
 | Phase 4 - Decoder Prompting | Complete | six final decoder runs plus final-only tables/report/plots exist |
-| Phase 5 - QLoRA Decoder Fine-Tuning | Pipeline added / diagnostic-only locally | configs, scripts, validation, and Colab workflow added; full 7B-9B results are not validated until Colab runs finish |
+| Phase 5 - QLoRA Decoder Fine-Tuning | Full Colab runs complete / aggregation added | Mistral, Llama 3, and Gemma 2 full outputs can be aggregated into phase-level tables, report, and plots without retraining |
 | Phase 6 - Ensemble | Planned | no implemented final artifact set |
 | Phase 7 - LDA Topic Modelling | Planned | dependencies exist, final phase implementation not present |
 | Phase 8 - BERTopic | Planned | dependencies exist, final phase implementation not present |
@@ -77,8 +77,10 @@ Phase 5 adds QLoRA decoder fine-tuning infrastructure for:
 - `meta-llama/Meta-Llama-3-8B-Instruct`
 - `google/gemma-2-9b-it`
 
-Local Phase 5 work is diagnostic-only for RTX 3050 4GB. The diagnostic config uses a tiny sample budget and writes to `outputs/phase5/diagnostic` plus `checkpoints/phase5/diagnostic`. Full 7B-9B runs are intended for Colab and must not be represented as complete until real Colab training/evaluation artifacts exist. The Llama 3 8B and Gemma 2 9B full QLoRA defaults are tuned for Colab L4 24GB, with documented lower-memory fallback settings if L4 OOM occurs.
+Local Phase 5 work is diagnostic-only for RTX 3050 4GB. The diagnostic config uses a tiny sample budget and writes to `outputs/phase5/diagnostic` plus `checkpoints/phase5/diagnostic`. Full 7B-9B runs are intended for Colab. Mistral, Llama 3, and Gemma 2 full QLoRA outputs can now be aggregated from existing `outputs/phase5/runs/*` artifacts into phase-level tables, report, and plots without retraining. The Llama 3 8B and Gemma 2 9B full QLoRA defaults are tuned for Colab L4 24GB, with documented lower-memory fallback settings if L4 OOM occurs.
+
+Phase 5 diagnostic artifacts may be absent in Colab Drive full-run environments. Full-run validation does not require diagnostic outputs unless `scripts/check_phase5_outputs.py --require_diagnostic` is passed.
 
 ## Immediate Next Task
 
-The next major task is running and validating the Phase 5 full QLoRA experiments on Colab. Do not claim final QLoRA results exist until `scripts/check_phase5_outputs.py --require_full_runs` passes.
+The next major task is using the completed Phase 5 tables and predictions in Phase 6 ensemble design.
