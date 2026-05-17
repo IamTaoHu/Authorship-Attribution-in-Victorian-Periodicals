@@ -1,0 +1,32 @@
+phase: phase7
+name: lda_topic_modeling
+random_state: 42
+
+inputs:
+  processed_periad_parts: [processed, periad]
+  train_file: train.csv
+  test_file: test.csv
+
+output:
+  phase7_dir: null
+  subdir: lda
+
+vectorizer:
+  lowercase: true
+  stop_words: english
+  min_df: 5
+  max_df: 0.8
+  max_features: 20000
+  ngram_range: [1, 1]
+  token_pattern: '(?u)\b[a-zA-Z][a-zA-Z][a-zA-Z]+\b'
+
+lda:
+  topic_counts: [10, 20, 30, 40]
+  max_iter: 20
+  learning_method: batch
+  evaluate_every: -1
+  n_jobs: -1
+
+topics:
+  top_n_words: 20
+  coherence_top_n_words: 10

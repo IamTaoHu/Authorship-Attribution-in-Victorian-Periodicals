@@ -40,7 +40,7 @@ The current decision is to use Colab Pro for heavy compute and keep permanent ou
 | Phase 4 - Decoder Prompting | Complete | six final decoder runs plus final-only tables/report/plots exist |
 | Phase 5 - QLoRA Decoder Fine-Tuning | Full Colab runs complete / aggregation added | Mistral, Llama 3, and Gemma 2 full outputs can be aggregated into phase-level tables, report, and plots without retraining |
 | Phase 6 - Ensemble | Complete | ensemble predictions, single-model/ensemble tables, report, and plots exist under `artifacts/phase6` |
-| Phase 7 - LDA Topic Modelling | Planned | dependencies exist, final phase implementation not present |
+| Phase 7 - LDA Topic Modelling | Complete | validated LDA tables, models, metrics, document-topic features, and plots exist under `artifacts/phase7/lda` |
 | Phase 8 - BERTopic | Planned | dependencies exist, final phase implementation not present |
 | Phase 9 - Topic-Aware Classification | Planned | no implemented final artifact set |
 | Phase 10 - Final Research Package | Planned | depends on completed benchmark and topic phases |
@@ -97,6 +97,22 @@ Implemented Phase 6 entry points:
 - `scripts/run_phase6_ensemble.py`
 - `scripts/check_phase6_outputs.py`
 
+## Phase 7 LDA Topic Modelling State
+
+Phase 7 is implemented and validated. It fits sklearn CountVectorizer + LatentDirichletAllocation models on the combined PERIAD train/test paragraph corpus from Phase 1. It preserves split, sample ID, author label, and text metadata while exporting reusable document-topic distributions for later topic-aware classification.
+
+The grid search evaluates k = 10, 20, 30, and 40 with deterministic `random_state = 42`. Model selection uses approximate coherence when available, otherwise lower perplexity. The validated local run selected k = 10 using approximate coherence over 11,828 combined documents.
+
+Phase 7 outputs are written to workspace-level `artifacts/phase7/lda`, with tables, metrics, models, and plots separated by subfolder. Generated artifacts remain outside the Git repository.
+
+Implemented Phase 7 entry points:
+
+- `configs/phase7/lda.yaml`
+- `src/topic_modeling/lda_phase7.py`
+- `src/visualization/plot_phase7_lda.py`
+- `scripts/run_phase7_lda.py`
+- `scripts/check_phase7_outputs.py`
+
 ## Immediate Next Task
 
-The next major task is Phase 7 LDA topic modelling.
+The next major task is Phase 8 BERTopic topic modelling.

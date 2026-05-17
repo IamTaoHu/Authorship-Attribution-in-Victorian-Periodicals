@@ -69,11 +69,12 @@ This board reflects the current verified repository and artifact state.
 
 ## Phase 7 - LDA Topic Modelling
 
-- [ ] Prepare traditional topic modelling corpus.
-- [ ] Implement LDA pipeline.
-- [ ] Tune topic counts and preprocessing.
-- [ ] Generate topic tables and visualizations.
-- [ ] Interpret topics for paper-ready analysis.
+- [x] Prepare traditional topic modelling corpus from combined PERIAD train/test paragraphs.
+- [x] Implement reproducible sklearn CountVectorizer + LDA pipeline.
+- [x] Tune topic counts and preprocessing across k = 10, 20, 30, 40.
+- [x] Generate topic tables, reusable document-topic features, models, summary metrics, and visualizations.
+- [x] Validate Phase 7 artifact set under external `artifacts/phase7/lda`.
+- [x] Interpret topics for paper-ready analysis. `artifacts\phase7\lda\reports\topic_interpretation.md`
 
 ## Phase 8 - BERTopic
 
