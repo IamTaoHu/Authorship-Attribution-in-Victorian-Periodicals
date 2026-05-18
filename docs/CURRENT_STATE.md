@@ -117,6 +117,8 @@ Implemented Phase 7 entry points:
 
 Phase 8 source implementation is added but the phase is not complete until generated artifacts validate. It builds an embedding-based BERTopic model on the combined Phase 1 PERIAD train/test paragraph corpus, preserves sample ID, split, author, label, text, and source row metadata, and exports a Phase 9-ready one-hot topic feature table.
 
+Phase 8 also includes report-friendly visualization polish generated from existing artifacts: a top-topic per-author heatmap, an author-colored document scatter plot, and top-topic word CSV/Markdown tables. These can be regenerated with `scripts/run_phase8_bertopic.py --plots_only` without refitting BERTopic or rewriting core assignments, probabilities, embeddings, or model artifacts.
+
 Local RTX 3050 mode is supported through `sentence-transformers/all-MiniLM-L6-v2`, default batch size 16, conservative UMAP/HDBSCAN settings, and BERTopic probabilities disabled by default. Probabilities can be enabled later with `--calculate_probabilities`; disabled-probability runs still export `tables/document_topic_features.csv`.
 
 Phase 8 outputs are written to workspace-level `artifacts/phase8/bertopic`. Generated embeddings, BERTopic saved models, plots, tables, and reports remain outside the Git repository.

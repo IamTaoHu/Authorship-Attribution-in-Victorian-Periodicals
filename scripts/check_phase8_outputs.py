@@ -34,6 +34,12 @@ REQUIRED_FILES = (
     "reports/bertopic_summary.json",
     "reports/bertopic_report.md",
 )
+POLISHED_FILES = (
+    "plots/per_author_top_topics_heatmap.png",
+    "plots/topic_scatter_by_author.png",
+    "tables/top_topic_words.csv",
+    "reports/top_topic_words.md",
+)
 REQUIRED_ASSIGNMENT_COLUMNS = {"sample_id", "split", "author", "text", "topic", "source_row_index", "source_row_id"}
 
 
@@ -192,10 +198,29 @@ def check_interactive(root: Path) -> bool:
     return True
 
 
+def check_polished_outputs(root: Path) -> bool:
+    ok = True
+    for relative in POLISHED_FILES:
+        ok = check_path(root / relative) and ok
+    table_path = root / "tables" / "top_topic_words.csv"
+    if table_path.exists():
+        frame = pd.read_csv(table_path)
+        required = {"topic", "topic_name", "document_count", "rank", "top_words"}
+        missing = required.difference(frame.columns)
+        if missing:
+            print(f"[MISSING] top_topic_words.csv columns: {', '.join(sorted(missing))}")
+            ok = False
+        if frame.empty:
+            print("[MISMATCH] top_topic_words.csv has zero rows")
+            ok = False
+    return ok
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--phase8_dir", default=None)
     parser.add_argument("--allow_missing_probabilities", action="store_true")
+    parser.add_argument("--require_polished_visualizations", action="store_true")
     args = parser.parse_args()
     root = Path(args.phase8_dir).expanduser() if args.phase8_dir else default_phase8_dir()
 
@@ -214,6 +239,8 @@ def main() -> int:
     ok = check_document_features(root, assignments) and ok
     ok = check_probabilities(root, summary, args.allow_missing_probabilities) and ok
     ok = check_interactive(root) and ok
+    if args.require_polished_visualizations:
+        ok = check_polished_outputs(root) and ok
 
     if ok:
         print("Phase 8 output check passed.")
