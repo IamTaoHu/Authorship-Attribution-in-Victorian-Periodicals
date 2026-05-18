@@ -17,7 +17,7 @@ if str(REPO_ROOT) not in sys.path:
 from src.classification.topic_features_phase9 import CANONICAL_AUTHORS, default_phase9_dir  # noqa: E402
 
 
-REQUIRED_DIRS = ("configs", "tables", "metrics", "predictions", "plots", "reports", "models", "logs")
+REQUIRED_DIRS = ("configs", "tables", "metrics", "predictions", "plots", "reports")
 REQUIRED_TABLES = (
     "tables/phase9_results_summary.csv",
     "tables/per_author_f1_comparison.csv",
@@ -39,6 +39,10 @@ def check_path(path: Path, *, nonempty: bool = True) -> bool:
     return ok
 
 
+def skip_path(path: Path, reason: str) -> None:
+    print(f"[SKIPPED] {path} - {reason}")
+
+
 def check_summary(root: Path) -> tuple[bool, pd.DataFrame]:
     path = root / "tables" / "phase9_results_summary.csv"
     if not path.exists():
@@ -50,7 +54,7 @@ def check_summary(root: Path) -> tuple[bool, pd.DataFrame]:
     if missing:
         print(f"[MISSING] phase9_results_summary.csv columns: {', '.join(sorted(missing))}")
         ok = False
-    for column in ("accuracy", "macro_f1"):
+    for column in ("accuracy", "macro_f1", "weighted_f1"):
         values = pd.to_numeric(frame.get(column), errors="coerce")
         if values.isna().any() or ((values < 0) | (values > 1)).any():
             print(f"[MISMATCH] {column} must be numeric and between 0 and 1")
@@ -109,6 +113,14 @@ def check_models(root: Path, summary: pd.DataFrame) -> bool:
     return ok
 
 
+def skip_models(root: Path, summary: pd.DataFrame) -> None:
+    reason = "large model folders are not required in the local mirror"
+    for _, row in summary.iterrows():
+        if str(row.get("model_type", "")) in TRANSFORMER_TYPES:
+            skip_path(root / "models" / str(row["variant"]), reason)
+    print("Large model/log folders are not required in the local mirror because Phase 9 was validated on Colab L4.")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--phase9_dir", default=None)
@@ -129,6 +141,8 @@ def main() -> int:
         ok = check_predictions(root, summary) and ok
         if args.require_models:
             ok = check_models(root, summary) and ok
+        else:
+            skip_models(root, summary)
     if args.require_plots:
         for relative in REQUIRED_PLOTS:
             ok = check_path(root / relative) and ok

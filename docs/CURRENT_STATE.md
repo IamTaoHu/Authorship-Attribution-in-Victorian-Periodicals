@@ -41,9 +41,11 @@ The current decision is to use Colab Pro for heavy compute and keep permanent ou
 | Phase 5 - QLoRA Decoder Fine-Tuning | Full Colab runs complete / aggregation added | Mistral, Llama 3, and Gemma 2 full outputs can be aggregated into phase-level tables, report, and plots without retraining |
 | Phase 6 - Ensemble | Complete | ensemble predictions, single-model/ensemble tables, report, and plots exist under `artifacts/phase6` |
 | Phase 7 - LDA Topic Modelling | Complete | validated LDA tables, models, metrics, document-topic features, and plots exist under `artifacts/phase7/lda` |
-| Phase 8 - BERTopic | Implemented / pending artifact validation | source pipeline, runner, plots, checker, and config exist; full artifacts are not complete until `scripts/check_phase8_outputs.py` passes |
-| Phase 9 - Topic-Aware Classification | Implemented / pending full Colab run validation | source pipeline, runner, plots, checker, and config exist; final artifacts are not complete until `scripts/check_phase9_outputs.py` passes |
-| Phase 10 - Final Research Package | Planned | depends on completed benchmark and topic phases |
+| Phase 8 - BERTopic | Complete | BERTopic outputs and Phase 9-ready topic features exist under `artifacts/phase8/bertopic` |
+| Phase 9 - Topic-Aware Classification | Full train completed and validated on Colab L4 | lightweight local mirror under `artifacts/phase9/topic_features` contains configs, tables, metrics, predictions, plots, and reports; large model/log folders remain on Google Drive |
+| Phase 10 - Final Research Package | Pending final synthesis | core experimental pipeline is complete; remaining work is analysis, reporting, and final integration |
+
+The core experimental pipeline is complete through Phase 9. Phase 10 is now a final synthesis, reporting, reproducibility, and integration stage rather than another model-training phase.
 
 ## Phase 4 Reporting State
 
@@ -115,7 +117,7 @@ Implemented Phase 7 entry points:
 
 ## Phase 8 BERTopic State
 
-Phase 8 source implementation is added but the phase is not complete until generated artifacts validate. It builds an embedding-based BERTopic model on the combined Phase 1 PERIAD train/test paragraph corpus, preserves sample ID, split, author, label, text, and source row metadata, and exports a Phase 9-ready one-hot topic feature table.
+Phase 8 is complete. It builds an embedding-based BERTopic model on the combined Phase 1 PERIAD train/test paragraph corpus, preserves sample ID, split, author, label, text, and source row metadata, and exports a Phase 9-ready one-hot topic feature table.
 
 Phase 8 also includes report-friendly visualization polish generated from existing artifacts: a top-topic per-author heatmap, an author-colored document scatter plot, and top-topic word CSV/Markdown tables. These can be regenerated with `scripts/run_phase8_bertopic.py --plots_only` without refitting BERTopic or rewriting core assignments, probabilities, embeddings, or model artifacts.
 
@@ -134,11 +136,13 @@ Implemented Phase 8 entry points:
 
 ## Phase 9 Topic-Aware Classification State
 
-Phase 9 source implementation is added but the phase is not complete until the full Colab L4 run validates. It reads Phase 1 processed PERIAD train/test CSVs and Phase 8 BERTopic-derived `tables/document_topic_features.csv`, then trains topic-only sklearn baselines and DeBERTa-v3-base text/topic-aware variants.
+Phase 9 is complete. Full training completed and validated on Colab L4. It reads Phase 1 processed PERIAD train/test CSVs and Phase 8 BERTopic-derived `tables/document_topic_features.csv`, then trains topic-only sklearn baselines and DeBERTa-v3-base text/topic-aware variants.
 
 The topic-aware transformer concatenates a BERTopic-derived topic feature vector to the encoder CLS representation before the classification head. When aligned `prob_topic_*` columns or saved probability arrays are available, the same workflow can include topic distribution features; otherwise the current one-hot topic assignment features are treated as BERTopic-derived topic features, not full topic distributions.
 
-Phase 9 outputs are written to workspace-level `artifacts/phase9/topic_features`, with configs, tables, metrics, predictions, plots, reports, models, and logs separated by subfolder. The runner refuses to write outputs inside the Git repository unless `--allow_repo_outputs` is explicitly passed.
+Phase 9 outputs are written to workspace-level `artifacts/phase9/topic_features`, with configs, tables, metrics, predictions, plots, reports, models, and logs separated by subfolder in the full Colab artifact set. The local mirror intentionally excludes large model/log folders; authoritative full artifacts remain on Google Drive. The runner refuses to write outputs inside the Git repository unless `--allow_repo_outputs` is explicitly passed.
+
+The latest validated result pattern is that text-only DeBERTa slightly outperformed topic-aware variants in macro F1, while topic-aware outputs remain useful for per-author analysis. The local mirror validates with `scripts/check_phase9_outputs.py --phase9_dir ../../artifacts/phase9/topic_features --require_plots`; pass `--require_models` only when validating a full artifact copy that includes transformer model folders.
 
 Implemented Phase 9 entry points:
 
@@ -150,4 +154,4 @@ Implemented Phase 9 entry points:
 
 ## Immediate Next Task
 
-The next major task is to run Phase 9 on Colab L4 and validate `artifacts/phase9/topic_features` with `scripts/check_phase9_outputs.py --require_models --require_plots`.
+The next major task is Phase 10 final synthesis: freeze final tables and plots, write the final research narrative, document reproducibility, and integrate the completed Phase 1-9 evidence.

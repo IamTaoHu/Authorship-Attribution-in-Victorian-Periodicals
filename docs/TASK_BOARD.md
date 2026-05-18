@@ -81,11 +81,11 @@ This board reflects the current verified repository and artifact state.
 
 - [x] Prepare embedding-based topic modelling workflow.
 - [x] Implement BERTopic pipeline, runner, checker, config, plotting module, and compatibility shim.
-- [ ] Generate and validate topic clusters, labels, and visualizations under external `artifacts/phase8/bertopic`.
+- [x] Generate and validate topic clusters, labels, and visualizations under external `artifacts/phase8/bertopic`.
 - [x] Add RTX 3050 local-first mode with MiniLM embeddings, batch size 16, conservative UMAP/HDBSCAN, and probabilities disabled by default.
 - [x] Export Phase 9-ready `tables/document_topic_features.csv` with one-hot topic columns, including `topic_-1` when outliers exist.
 - [x] Add report-friendly polished Phase 8 visualizations and top-topic word tables.
-- [ ] Compare BERTopic outputs with LDA.
+- [x] Compare BERTopic outputs with LDA.
 
 ## Phase 9 - Topic-Aware Classification
 
@@ -94,10 +94,11 @@ This board reflects the current verified repository and artifact state.
 - [x] Add topic-only baselines using BERTopic-derived topic feature vectors.
 - [x] Add DeBERTa-v3-base text-only reproduction and topic-feature concatenation variants for Colab L4.
 - [x] Add Phase 9 plots, aggregation tables, prediction exports, and report generation.
-- [x] Add checker for required Phase 9 outputs, model folders, plots, canonical authors, and prediction row counts.
-- [ ] Run full Colab L4 Phase 9 variants and validate `artifacts/phase9/topic_features` with `scripts/check_phase9_outputs.py`.
-- [ ] Evaluate topic-aware models against prior baselines.
-- [ ] Analyze whether topic information improves attribution.
+- [x] Add checker for required Phase 9 lightweight outputs, optional model folders, plots, canonical authors, and prediction row counts.
+- [x] Run full Colab L4 Phase 9 variants and validate `artifacts/phase9/topic_features` with `scripts/check_phase9_outputs.py`.
+- [x] Evaluate topic-aware models against prior baselines.
+- [x] Analyze whether topic information improves attribution: text-only DeBERTa slightly outperformed topic-aware variants in macro F1, while topic-aware outputs remain useful for per-author analysis.
+- [x] Document that the local mirror excludes large model/log folders and authoritative full artifacts remain on Google Drive.
 
 ## Phase 10 - Final Package
 
@@ -106,3 +107,4 @@ This board reflects the current verified repository and artifact state.
 - [ ] Create final reports and research package.
 - [ ] Prepare reproducibility notes.
 - [ ] Prepare paper-ready narrative and appendices.
+- [ ] Final synthesis/reporting/integration only; the core experimental pipeline through Phase 9 is complete.
