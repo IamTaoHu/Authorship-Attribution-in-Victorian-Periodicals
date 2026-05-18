@@ -75,12 +75,15 @@ This board reflects the current verified repository and artifact state.
 - [x] Generate topic tables, reusable document-topic features, models, summary metrics, and visualizations.
 - [x] Validate Phase 7 artifact set under external `artifacts/phase7/lda`.
 - [x] Interpret topics for paper-ready analysis. `artifacts\phase7\lda\reports\topic_interpretation.md`
+- [x] Add visualizations `artifacts\phase7\lda\interactive`
 
 ## Phase 8 - BERTopic
 
-- [ ] Prepare embedding-based topic modelling workflow.
-- [ ] Implement BERTopic experiments.
-- [ ] Generate topic clusters, labels, and visualizations.
+- [x] Prepare embedding-based topic modelling workflow.
+- [x] Implement BERTopic pipeline, runner, checker, config, plotting module, and compatibility shim.
+- [ ] Generate and validate topic clusters, labels, and visualizations under external `artifacts/phase8/bertopic`.
+- [x] Add RTX 3050 local-first mode with MiniLM embeddings, batch size 16, conservative UMAP/HDBSCAN, and probabilities disabled by default.
+- [x] Export Phase 9-ready `tables/document_topic_features.csv` with one-hot topic columns, including `topic_-1` when outliers exist.
 - [ ] Compare BERTopic outputs with LDA.
 
 ## Phase 9 - Topic-Aware Classification

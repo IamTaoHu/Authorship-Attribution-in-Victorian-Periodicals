@@ -1,0 +1,39 @@
+phase: phase8
+name: bertopic_topic_modeling
+random_state: 42
+
+inputs:
+  processed_periad_parts: [processed, periad]
+  train_file: train.csv
+  test_file: test.csv
+
+output:
+  phase8_dir: null
+  subdir: bertopic
+
+embeddings:
+  model_name: sentence-transformers/all-MiniLM-L6-v2
+  batch_size: 16
+  device: auto
+  normalize_embeddings: true
+
+bertopic:
+  calculate_probabilities: false
+  top_n_words: 20
+  verbose: true
+
+umap:
+  n_neighbors: 15
+  n_components: 5
+  min_dist: 0.0
+  metric: cosine
+  low_memory: true
+
+hdbscan:
+  min_cluster_size: 25
+  min_samples: 5
+  metric: euclidean
+  prediction_data: true
+
+features:
+  include_outlier_topic: true

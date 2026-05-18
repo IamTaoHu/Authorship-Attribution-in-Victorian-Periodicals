@@ -41,7 +41,7 @@ The current decision is to use Colab Pro for heavy compute and keep permanent ou
 | Phase 5 - QLoRA Decoder Fine-Tuning | Full Colab runs complete / aggregation added | Mistral, Llama 3, and Gemma 2 full outputs can be aggregated into phase-level tables, report, and plots without retraining |
 | Phase 6 - Ensemble | Complete | ensemble predictions, single-model/ensemble tables, report, and plots exist under `artifacts/phase6` |
 | Phase 7 - LDA Topic Modelling | Complete | validated LDA tables, models, metrics, document-topic features, and plots exist under `artifacts/phase7/lda` |
-| Phase 8 - BERTopic | Planned | dependencies exist, final phase implementation not present |
+| Phase 8 - BERTopic | Implemented / pending artifact validation | source pipeline, runner, plots, checker, and config exist; full artifacts are not complete until `scripts/check_phase8_outputs.py` passes |
 | Phase 9 - Topic-Aware Classification | Planned | no implemented final artifact set |
 | Phase 10 - Final Research Package | Planned | depends on completed benchmark and topic phases |
 
@@ -113,6 +113,23 @@ Implemented Phase 7 entry points:
 - `scripts/run_phase7_lda.py`
 - `scripts/check_phase7_outputs.py`
 
+## Phase 8 BERTopic State
+
+Phase 8 source implementation is added but the phase is not complete until generated artifacts validate. It builds an embedding-based BERTopic model on the combined Phase 1 PERIAD train/test paragraph corpus, preserves sample ID, split, author, label, text, and source row metadata, and exports a Phase 9-ready one-hot topic feature table.
+
+Local RTX 3050 mode is supported through `sentence-transformers/all-MiniLM-L6-v2`, default batch size 16, conservative UMAP/HDBSCAN settings, and BERTopic probabilities disabled by default. Probabilities can be enabled later with `--calculate_probabilities`; disabled-probability runs still export `tables/document_topic_features.csv`.
+
+Phase 8 outputs are written to workspace-level `artifacts/phase8/bertopic`. Generated embeddings, BERTopic saved models, plots, tables, and reports remain outside the Git repository.
+
+Implemented Phase 8 entry points:
+
+- `configs/phase8/bertopic.yaml`
+- `src/topic_modeling/bertopic_phase8.py`
+- `src/topic_modelling/bertopic_phase8.py` compatibility shim only
+- `src/visualization/plot_phase8_bertopic.py`
+- `scripts/run_phase8_bertopic.py`
+- `scripts/check_phase8_outputs.py`
+
 ## Immediate Next Task
 
-The next major task is Phase 8 BERTopic topic modelling.
+The next major task is to run and validate Phase 8 BERTopic artifacts.
