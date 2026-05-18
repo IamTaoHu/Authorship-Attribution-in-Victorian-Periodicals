@@ -449,11 +449,12 @@ def build_topic_aware_model_class() -> type:
         def __init__(self, hf_config: Any, model_name: str, topic_dim: int, topic_projection_dim: int, dropout: float = 0.1) -> None:
             super().__init__(hf_config)
             self.num_labels = hf_config.num_labels
-            self.encoder = AutoModel.from_pretrained(model_name, config=hf_config)
+            self.encoder = AutoModel.from_pretrained(model_name, config=hf_config, torch_dtype=torch.float32)
             self.topic_projection = nn.Sequential(nn.Linear(topic_dim, topic_projection_dim), nn.ReLU(), nn.Dropout(dropout))
             self.classifier = nn.Linear(hf_config.hidden_size + topic_projection_dim, hf_config.num_labels)
             self.dropout = nn.Dropout(dropout)
             self.loss_fn = nn.CrossEntropyLoss()
+            self.float()
 
         def forward(
             self,
@@ -524,8 +525,10 @@ def run_transformer_variant(
             topic_projection_dim=int(model_config.get("topic_projection_dim", 64)),
             dropout=float(model_config.get("dropout", 0.1)),
         )
+        model = model.float()
     else:
-        model = AutoModelForSequenceClassification.from_pretrained(model_name, config=hf_config)
+        model = AutoModelForSequenceClassification.from_pretrained(model_name, config=hf_config, torch_dtype=torch.float32)
+        model = model.float()
 
     def compute_metrics(eval_pred: Any) -> dict[str, float]:
         logits, labels = eval_pred
@@ -544,7 +547,8 @@ def run_transformer_variant(
         "learning_rate": float(train_config.get("learning_rate", 2e-5)),
         "weight_decay": float(train_config.get("weight_decay", 0.01)),
         "warmup_ratio": float(train_config.get("warmup_ratio", 0.06)),
-        "fp16": bool(train_config.get("fp16", True)) and torch.cuda.is_available(),
+        "fp16": False,
+        "bf16": False,
         "logging_steps": int(train_config.get("logging_steps", 50)),
         "save_strategy": str(train_config.get("save_strategy", "epoch")),
         "load_best_model_at_end": bool(train_config.get("load_best_model_at_end", True)),
