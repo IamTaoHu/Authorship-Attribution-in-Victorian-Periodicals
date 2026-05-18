@@ -84,7 +84,7 @@ This board reflects the current verified repository and artifact state.
 - [x] Generate and validate topic clusters, labels, and visualizations under external `artifacts/phase8/bertopic`.
 - [x] Add RTX 3050 local-first mode with MiniLM embeddings, batch size 16, conservative UMAP/HDBSCAN, and probabilities disabled by default.
 - [x] Export Phase 9-ready `tables/document_topic_features.csv` with one-hot topic columns, including `topic_-1` when outliers exist.
-- [x] Add report-friendly polished Phase 8 visualizations and top-topic word tables.
+- [x] Add Phase 8 visualizations and top-topic word tables.
 - [x] Compare BERTopic outputs with LDA.
 
 ## Phase 9 - Topic-Aware Classification
@@ -102,9 +102,9 @@ This board reflects the current verified repository and artifact state.
 
 ## Phase 10 - Final Package
 
-- [ ] Freeze final benchmark tables.
-- [ ] Freeze final plots and visualizations.
-- [ ] Create final reports and research package.
-- [ ] Prepare reproducibility notes.
-- [ ] Prepare paper-ready narrative and appendices.
-- [ ] Final synthesis/reporting/integration only; the core experimental pipeline through Phase 9 is complete.
+- [x] Freeze final benchmark tables.
+- [x] Freeze final plots and visualizations.
+- [x] Create final reports and research package.
+- [x] Prepare reproducibility notes.
+- [x] Prepare paper-ready narrative and appendices.
+- [x] Final synthesis/reporting/integration only; the core experimental pipeline through Phase 9 is complete.
