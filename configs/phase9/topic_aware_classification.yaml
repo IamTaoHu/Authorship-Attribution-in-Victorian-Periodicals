@@ -64,7 +64,7 @@ training:
   learning_rate: 0.00002
   weight_decay: 0.01
   warmup_ratio: 0.06
-  fp16: true
+  fp16: false
   logging_steps: 50
   save_strategy: "epoch"
   evaluation_strategy: "epoch"
