@@ -473,7 +473,15 @@ def build_topic_aware_model_class() -> type:
             )
             projected = self.topic_projection(topic_features)
             projected = projected.to(dtype=pooled.dtype)
-            logits = self.classifier(torch.cat([self.dropout(pooled), projected], dim=-1))
+            classifier_input = torch.cat(
+                [self.dropout(pooled), projected],
+                dim=-1,
+            )
+            classifier_input = classifier_input.to(
+                dtype=self.classifier.weight.dtype,
+                device=self.classifier.weight.device,
+            )
+            logits = self.classifier(classifier_input)
             loss = self.loss_fn(logits, labels) if labels is not None else None
             return SequenceClassifierOutput(loss=loss, logits=logits, hidden_states=outputs.hidden_states, attentions=outputs.attentions)
 
