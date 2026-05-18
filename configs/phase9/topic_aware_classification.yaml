@@ -1,0 +1,81 @@
+phase: phase9
+experiment_name: topic_aware_deberta_v3_base_seed42
+seed: 42
+
+paths:
+  dataset_train: null
+  dataset_test: null
+  phase8_dir: null
+  output_dir: null
+
+data:
+  text_column_candidates: ["text", "paragraph", "content"]
+  label_column_candidates: ["author", "label", "true_author"]
+  split_column: "split"
+  id_column_candidates: ["source_row_id", "sample_id", "id"]
+  source_index_column: "source_row_index"
+
+topic_features:
+  feature_file: "tables/document_topic_features.csv"
+  include_topic_onehot: true
+  include_topic_probabilities: true
+  include_topic_entropy: true
+  include_top_topic_numeric: true
+  include_outlier_topic: true
+  outlier_column: "topic_-1"
+  standardize_features: true
+  missing_value_strategy: "zero"
+  topic_column_prefixes:
+    - "topic_"
+    - "prob_topic_"
+  passthrough_columns:
+    - "topic"
+    - "top_topic"
+    - "topic_entropy"
+
+variants:
+  - name: topic_only_logreg
+    type: sklearn_topic_only
+    model: logistic_regression
+  - name: topic_only_linear_svc
+    type: sklearn_topic_only
+    model: linear_svc
+  - name: deberta_text_only_reproduced
+    type: transformer_text_only
+  - name: deberta_topic_concat
+    type: transformer_topic_concat
+  - name: deberta_topic_concat_no_outlier
+    type: transformer_topic_concat
+    include_outlier_topic: false
+
+model:
+  model_name: "microsoft/deberta-v3-base"
+  max_length: 256
+  num_labels: 6
+  topic_projection_dim: 64
+  dropout: 0.1
+  pooling: "cls"
+
+training:
+  num_train_epochs: 3
+  per_device_train_batch_size: 8
+  per_device_eval_batch_size: 16
+  gradient_accumulation_steps: 2
+  learning_rate: 0.00002
+  weight_decay: 0.01
+  warmup_ratio: 0.06
+  fp16: true
+  logging_steps: 50
+  save_strategy: "epoch"
+  evaluation_strategy: "epoch"
+  load_best_model_at_end: true
+  metric_for_best_model: "macro_f1"
+  greater_is_better: true
+  save_total_limit: 2
+
+metrics:
+  primary_metric: "macro_f1"
+  include_accuracy: true
+  include_weighted_f1: true
+  include_per_author_report: true
+  include_confusion_matrix: true

@@ -89,8 +89,13 @@ This board reflects the current verified repository and artifact state.
 
 ## Phase 9 - Topic-Aware Classification
 
-- [ ] Design topic feature integration strategy.
-- [ ] Build topic-aware classification variants.
+- [x] Design topic feature integration strategy.
+- [x] Implement Phase 9 config, runner, source module, plotting module, and checker.
+- [x] Add topic-only baselines using BERTopic-derived topic feature vectors.
+- [x] Add DeBERTa-v3-base text-only reproduction and topic-feature concatenation variants for Colab L4.
+- [x] Add Phase 9 plots, aggregation tables, prediction exports, and report generation.
+- [x] Add checker for required Phase 9 outputs, model folders, plots, canonical authors, and prediction row counts.
+- [ ] Run full Colab L4 Phase 9 variants and validate `artifacts/phase9/topic_features` with `scripts/check_phase9_outputs.py`.
 - [ ] Evaluate topic-aware models against prior baselines.
 - [ ] Analyze whether topic information improves attribution.
 

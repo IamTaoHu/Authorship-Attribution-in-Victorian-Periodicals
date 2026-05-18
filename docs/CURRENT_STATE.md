@@ -42,7 +42,7 @@ The current decision is to use Colab Pro for heavy compute and keep permanent ou
 | Phase 6 - Ensemble | Complete | ensemble predictions, single-model/ensemble tables, report, and plots exist under `artifacts/phase6` |
 | Phase 7 - LDA Topic Modelling | Complete | validated LDA tables, models, metrics, document-topic features, and plots exist under `artifacts/phase7/lda` |
 | Phase 8 - BERTopic | Implemented / pending artifact validation | source pipeline, runner, plots, checker, and config exist; full artifacts are not complete until `scripts/check_phase8_outputs.py` passes |
-| Phase 9 - Topic-Aware Classification | Planned | no implemented final artifact set |
+| Phase 9 - Topic-Aware Classification | Implemented / pending full Colab run validation | source pipeline, runner, plots, checker, and config exist; final artifacts are not complete until `scripts/check_phase9_outputs.py` passes |
 | Phase 10 - Final Research Package | Planned | depends on completed benchmark and topic phases |
 
 ## Phase 4 Reporting State
@@ -132,6 +132,22 @@ Implemented Phase 8 entry points:
 - `scripts/run_phase8_bertopic.py`
 - `scripts/check_phase8_outputs.py`
 
+## Phase 9 Topic-Aware Classification State
+
+Phase 9 source implementation is added but the phase is not complete until the full Colab L4 run validates. It reads Phase 1 processed PERIAD train/test CSVs and Phase 8 BERTopic-derived `tables/document_topic_features.csv`, then trains topic-only sklearn baselines and DeBERTa-v3-base text/topic-aware variants.
+
+The topic-aware transformer concatenates a BERTopic-derived topic feature vector to the encoder CLS representation before the classification head. When aligned `prob_topic_*` columns or saved probability arrays are available, the same workflow can include topic distribution features; otherwise the current one-hot topic assignment features are treated as BERTopic-derived topic features, not full topic distributions.
+
+Phase 9 outputs are written to workspace-level `artifacts/phase9/topic_features`, with configs, tables, metrics, predictions, plots, reports, models, and logs separated by subfolder. The runner refuses to write outputs inside the Git repository unless `--allow_repo_outputs` is explicitly passed.
+
+Implemented Phase 9 entry points:
+
+- `configs/phase9/topic_aware_classification.yaml`
+- `src/classification/topic_features_phase9.py`
+- `src/visualization/plot_phase9_topic_features.py`
+- `scripts/run_phase9_topic_features.py`
+- `scripts/check_phase9_outputs.py`
+
 ## Immediate Next Task
 
-The next major task is to run and validate Phase 8 BERTopic artifacts.
+The next major task is to run Phase 9 on Colab L4 and validate `artifacts/phase9/topic_features` with `scripts/check_phase9_outputs.py --require_models --require_plots`.
